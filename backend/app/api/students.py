@@ -1,34 +1,46 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..services.matching import rank_researchers
+from ..services.recommendation import generate_recommendations
 
 
 router = APIRouter(
-    prefix="/students",
-    tags=["Students"]
+    prefix="/recommendations",
+    tags=["Recommendations"]
 )
 
 
 class StudentProfile(BaseModel):
-    profile: str
+    research_areas: str = ""
+    expertise: str = ""
+    skills: str = ""
+    projects: str = ""
+    publications: str = ""
     top_k: int = 5
 
 
-@router.post("/recommendations")
-def get_recommendations(
+@router.post("/researchers")
+def recommend_researchers(
     student: StudentProfile,
     db: Session = Depends(get_db)
 ):
-    results = rank_researchers(
-        student_profile=student.profile,
+    student_profile = {
+        "research_areas": student.research_areas,
+        "expertise": student.expertise,
+        "skills": student.skills,
+        "projects": student.projects,
+        "publications": student.publications
+    }
+
+    recommendations = generate_recommendations(
+        student_profile=student_profile,
         db=db,
         top_k=student.top_k
     )
 
     return {
-        "student_profile": student.profile,
-        "recommendations": results
+        "student_profile": student_profile,
+        "recommendations": recommendations
     }

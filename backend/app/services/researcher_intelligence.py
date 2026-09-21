@@ -3,10 +3,20 @@ from sqlalchemy.orm import Session
 from ..models import Researcher
 
 
+def clean_text(value) -> str:
+    """
+    Convert a database field into clean text.
+    """
+
+    if value is None:
+        return ""
+
+    return " ".join(str(value).strip().split())
+
+
 def build_research_profile(researcher: Researcher) -> str:
     """
-    Combine all important researcher information
-    into one ML-ready research profile.
+    Build one combined research profile.
     """
 
     parts = [
@@ -17,20 +27,54 @@ def build_research_profile(researcher: Researcher) -> str:
         researcher.projects,
     ]
 
-    # Remove empty values
-    parts = [
-        str(part).strip()
+    cleaned_parts = [
+        clean_text(part)
         for part in parts
-        if part is not None and str(part).strip()
+        if clean_text(part)
     ]
 
-    return " ".join(parts)
+    return " ".join(cleaned_parts)
+
+
+def build_structured_profile(researcher: Researcher) -> dict:
+    """
+    Build a structured researcher representation.
+
+    Each research dimension is kept separately so that
+    the recommendation engine can later calculate
+    different similarity signals.
+    """
+
+    return {
+        "research_areas": clean_text(
+            researcher.research_areas
+        ),
+
+        "expertise": clean_text(
+            researcher.expertise
+        ),
+
+        "skills": clean_text(
+            researcher.skills
+        ),
+
+        "publications": clean_text(
+            researcher.publications
+        ),
+
+        "projects": clean_text(
+            researcher.projects
+        ),
+
+        "combined_profile": build_research_profile(
+            researcher
+        ),
+    }
 
 
 def get_researcher_profiles(db: Session):
     """
-    Return all researchers with their combined
-    research profile.
+    Return structured research profiles for all researchers.
     """
 
     researchers = db.query(Researcher).all()
@@ -38,14 +82,19 @@ def get_researcher_profiles(db: Session):
     results = []
 
     for researcher in researchers:
-        profile = build_research_profile(researcher)
+
+        profile = build_structured_profile(
+            researcher
+        )
 
         results.append(
             {
                 "id": researcher.id,
                 "name": researcher.name,
                 "department": researcher.department,
-                "research_profile": profile,
+                "designation": researcher.designation,
+                "experience": researcher.experience,
+                **profile,
             }
         )
 
