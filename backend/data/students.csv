@@ -1,0 +1,11 @@
+student_id,name,research_areas,expertise,skills,projects,publications
+S001,Student 1,"Artificial Intelligence, Machine Learning, Natural Language Processing","Deep Learning, Large Language Models, NLP","Python, PyTorch, Transformers, Machine Learning","AI chatbot using large language models and semantic search","Natural Language Processing and Transformer-based models"
+S002,Student 2,"Computer Vision, Deep Learning, Image Processing","CNNs, Object Detection, Computer Vision","Python, OpenCV, PyTorch, TensorFlow","Real-time object detection system","Deep Learning for Computer Vision"
+S003,Student 3,"Cybersecurity, Network Security, Machine Learning","Intrusion Detection, Threat Detection","Python, Machine Learning, Networking, Linux","ML-based network intrusion detection","Cybersecurity and anomaly detection"
+S004,Student 4,"Internet of Things, Edge Computing, Smart Systems","IoT Analytics, Edge AI","Python, IoT, MQTT, Embedded Systems","Smart campus monitoring system","IoT and Edge Intelligence"
+S005,Student 5,"Robotics, Reinforcement Learning, Autonomous Systems","Robot Control, Reinforcement Learning","Python, ROS, Reinforcement Learning, C++","Autonomous mobile robot navigation","Reinforcement Learning for Robotics"
+S006,Student 6,"Data Science, Big Data, Predictive Analytics","Data Mining, Predictive Modeling","Python, Pandas, Scikit-learn, SQL","Student performance prediction system","Educational Data Mining"
+S007,Student 7,"Blockchain, Distributed Systems, Cybersecurity","Blockchain Security, Smart Contracts","Python, Solidity, Blockchain","Secure blockchain-based academic credential system","Blockchain and Distributed Systems"
+S008,Student 8,"Cloud Computing, Distributed Systems, Big Data","Cloud Architecture, Distributed Processing","Python, Docker, Kubernetes, Spark","Scalable cloud analytics platform","Cloud Computing and Big Data"
+S009,Student 9,"Natural Language Processing, Speech AI, Deep Learning","Speech Recognition, NLP","Python, PyTorch, Transformers, Speech Processing","Multilingual voice assistant","Speech and Language Processing"
+S010,Student 10,"Time Series, Machine Learning, Predictive Analytics","Forecasting, Anomaly Detection","Python, Pandas, Scikit-learn, Statistics","Energy demand forecasting system","Time Series Forecasting"
