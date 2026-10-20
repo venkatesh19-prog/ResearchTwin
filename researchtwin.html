@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResearchTwin Application Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0F1117;
+            --bg-card: #1A1D26;
+            --primary: #D96500;
+            --accent-blue: #0078D4;
+            --accent-green: #28A745;
+            --text-sub: #A0A5B5;
+            --border: #2A2E3D;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: white;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: #141721;
+            border-right: 1px solid var(--border);
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px 25px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #FF9900, #D96500);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .nav-menu {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .nav-menu li a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .nav-menu li a.active, .nav-menu li a:hover {
+            background: rgba(217, 101, 0, 0.15);
+            color: var(--primary);
+            border-left: 4px solid var(--primary);
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            background: #12141D;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #B55200;
+        }
+
+        .match-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .score-badge {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 800;
+            border: 1px solid var(--accent-green);
+        }
+
+        .shap-box {
+            background: #12141D;
+            border: 1px solid #2B3042;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin: 3px;
+            font-weight: bold;
+        }
+
+        .tag-match {
+            background: rgba(0, 120, 212, 0.3);
+            color: #70B5FF;
+        }
+
+        .tag-miss {
+            background: rgba(217, 56, 30, 0.3);
+            color: #FF8878;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-brain"></i></div>
+            <div>
+                <h3 style="font-size:16px;">ResearchTwin</h3>
+                <span style="font-size:11px; color:var(--text-sub);">ML Matching Platform</span>
+            </div>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#" class="active" id="navMatches" onclick="switchTab('matchView')"><i class="fa-solid fa-wand-magic-sparkles"></i> ML Recommendations</a></li>
+            <li><a href="#" id="navStudent" onclick="switchTab('studentView')"><i class="fa-solid fa-user-gear"></i> Student Profile</a></li>
+            <li><a href="#" id="navFaculty" onclick="switchTab('facultyView')"><i class="fa-solid fa-graduation-cap"></i> Faculty Directory</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+
+        <!-- 1. ML RECOMMENDATIONS & EXPLAINABILITY -->
+        <div id="matchView" class="view-section active">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-robot"></i> Faculty Matching & Recommendations</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">Calculates student-researcher compatibility, SHAP attributions, and readiness roadmaps.</p>
+                <button class="btn" onclick="fetchMatches()"><i class="fa-solid fa-rotate"></i> Run ML Match Engine</button>
+            </div>
+            <div id="matchesContainer"></div>
+        </div>
+
+        <!-- 2. STUDENT PROFILE -->
+        <div id="studentView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-id-card"></i> Student Research Profile</div>
+                <form onsubmit="saveStudentProfile(event)">
+                    <label style="font-size:12px; color:var(--text-sub);">Student ID</label>
+                    <input type="text" id="sId" value="S001" readonly>
+                    
+                    <label style="font-size:12px; color:var(--text-sub);">Research Interests</label>
+                    <input type="text" id="sAreas" placeholder="e.g. Artificial Intelligence, Machine Learning">
+                    
+                    <label style="font-size:12px; color:var(--text-sub);">Technical Skills</label>
+                    <input type="text" id="sSkills" placeholder="e.g. Python, PyTorch, SQL">
+                    
+                    <label style="font-size:12px; color:var(--text-sub);">Projects & Academic Details</label>
+                    <textarea id="sProjects" rows="3" placeholder="Describe recent projects or publications"></textarea>
+                    
+                    <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk"></i> Update & Re-index Profile</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. FACULTY DIRECTORY & SEARCH -->
+        <div id="facultyView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Faculty Directory & Research Search</div>
+                <input type="text" id="facSearch" placeholder="Search by research domain, topic, or required skill keyword..." onkeyup="searchFaculty()">
+                <div id="facultyList"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        function switchTab(viewId) {
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-menu a').forEach(e => e.classList.remove('active'));
+
+            document.getElementById(viewId).classList.add('active');
+            
+            if (viewId === 'matchView') {
+                document.getElementById('navMatches').classList.add('active');
+                fetchMatches();
+            }
+            if (viewId === 'studentView') {
+                document.getElementById('navStudent').classList.add('active');
+                loadStudentProfile();
+            }
+            if (viewId === 'facultyView') {
+                document.getElementById('navFaculty').classList.add('active');
+                searchFaculty();
+            }
+        }
+
+        async function fetchMatches() {
+            const container = document.getElementById('matchesContainer');
+            container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i> Running ML Matching Engine & SHAP Explainers...</div>';
+
+            try {
+                const res = await fetch(`${API_BASE}/recommend`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ student_id: "S001", top_k: 5 })
+                });
+                const data = await res.json();
+                renderMatches(data.recommendations);
+            } catch (err) {
+                container.innerHTML = '<div style="color:#FF4D4D; text-align:center; padding:20px;">FastAPI server offline. Please start the server using command:<br><br><code style="background:#222; padding:8px 12px; border-radius:4px; color:#FF9900;">uvicorn main:app --reload</code></div>';
+            }
+        }
+
+        function renderMatches(recs) {
+            const container = document.getElementById('matchesContainer');
+            container.innerHTML = "";
+
+            if (!recs || recs.length === 0) {
+                container.innerHTML = '<div style="color:#888; text-align:center;">No matching faculty found.</div>';
+                return;
+            }
+
+            recs.forEach(r => {
+                const matchedTags = r.skill_gap.matched_skills.map(s => `<span class="tag tag-match"><i class="fa-solid fa-check"></i> ${s}</span>`).join('');
+                const missingTags = r.skill_gap.missing_skills.map(s => `<span class="tag tag-miss"><i class="fa-solid fa-xmark"></i> ${s}</span>`).join('');
+
+                const shapHtml = (r.shap_explanation || []).map(s => `
+                    <div style="font-size:12px; display:flex; justify-content:space-between; margin:3px 0;">
+                        <span>${s.feature}</span>
+                        <b style="color:${s.shap_impact >= 0 ? '#28A745' : '#FF4D4D'};">${s.shap_impact >= 0 ? '+' : ''}${s.shap_impact}</b>
+                    </div>
+                `).join('');
+
+                const steps = (r.skill_gap.improvement_path || []).map(step => `<li style="font-size:12px; color:var(--text-sub); margin-left:15px; margin-top:3px;">${step}</li>`).join('');
+
+                const card = document.createElement('div');
+                card.className = 'match-card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div><h3>${r.researcher_name}</h3><span style="font-size:13px; color:var(--text-sub);">${r.department}</span></div>
+                        <div class="score-badge">${r.match_score}% Match</div>
+                    </div>
+                    <p style="font-size:14px; margin-bottom:10px;">${r.explanation}</p>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:12px; color:var(--text-sub); margin-bottom:4px;">Skills & Prerequisite Gaps:</div>
+                        ${matchedTags} ${missingTags}
+                    </div>
+                    ${steps ? `<div style="background:#12141D; padding:10px; border-radius:6px; margin-top:8px;">
+                        <div style="font-size:12px; font-weight:bold; color:#FF9900;"><i class="fa-solid fa-route"></i> Suggested Improvement Path:</div>
+                        <ul>${steps}</ul>
+                    </div>` : ''}
+                    <div class="shap-box">
+                        <div style="font-size:12px; font-weight:bold; color:var(--primary); margin-bottom:5px;"><i class="fa-solid fa-chart-bar"></i> SHAP Feature Attribution:</div>
+                        ${shapHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function loadStudentProfile() {
+            try {
+                const res = await fetch(`${API_BASE}/api/student/profile/S001`);
+                const data = await res.json();
+                document.getElementById('sAreas').value = data.research_areas || "";
+                document.getElementById('sSkills').value = data.skills || "";
+                document.getElementById('sProjects').value = data.projects || "";
+            } catch (e) {
+                console.error("Failed to load profile:", e);
+            }
+        }
+
+        async function saveStudentProfile(e) {
+            e.preventDefault();
+            const payload = {
+                student_id: document.getElementById('sId').value,
+                name: "Aishwarya",
+                research_areas: document.getElementById('sAreas').value,
+                expertise: "Machine Learning",
+                skills: document.getElementById('sSkills').value,
+                projects: document.getElementById('sProjects').value,
+                publications: "None"
+            };
+            try {
+                const res = await fetch(`${API_BASE}/api/student/profile/update`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                alert(data.message);
+                switchTab('matchView');
+            } catch (err) {
+                alert("Failed to update profile. Make sure FastAPI server is running.");
+            }
+        }
+
+        async function searchFaculty() {
+            const q = document.getElementById('facSearch')?.value || "";
+            try {
+                const res = await fetch(`${API_BASE}/api/teachers/search?query=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                const list = document.getElementById('facultyList');
+                if (!data.teachers || data.teachers.length === 0) {
+                    list.innerHTML = '<div style="color:#888; padding:15px 0;">No researchers found matching keyword.</div>';
+                    return;
+                }
+                list.innerHTML = data.teachers.map(t => `
+                    <div style="padding:15px 0; border-bottom:1px solid var(--border);">
+                        <b style="color:#FFF;">${t.name}</b> <span style="color:var(--text-sub); font-size:12px;">(${t.department})</span><br>
+                        <p style="color:var(--text-sub); font-size:13px; margin-top:4px;">${t.project_description}</p>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error("Search failed:", err);
+            }
+        }
+
+        window.onload = function() { fetchMatches(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+student_id,name,research_areas,expertise,skills,projects,publications
+S001,Aishwarya,"Artificial Intelligence, Machine Learning, Natural Language Processing",Machine Learning,"Python, PyTorch, Transformers, Machine Learning",AI chatbot using large language models and semantic search,None
+S002,Student 2,"Computer Vision, Deep Learning, Image Processing","CNNs, Object Detection, Computer Vision","Python, OpenCV, PyTorch, TensorFlow",Real-time object detection system,Deep Learning for Computer Vision
+S003,Student 3,"Cybersecurity, Network Security, Machine Learning","Intrusion Detection, Threat Detection","Python, Machine Learning, Networking, Linux",ML-based network intrusion detection,Cybersecurity and anomaly detection

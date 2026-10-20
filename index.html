@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMS - University Management System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1C1C1C;
+            --bg-sidebar: #D96500;
+            --sidebar-active: #B55200;
+            --pill-orange: #D96500;
+            --pill-blue: #0078D4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #FFF;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 100px;
+            background: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+        }
+
+        .nav-item {
+            width: 100%;
+            padding: 18px 5px;
+            color: white;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: var(--sidebar-active);
+        }
+
+        .nav-item i {
+            font-size: 22px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .topnav {
+            background: var(--bg-card);
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            border-bottom: 1px solid #2A2A2A;
+        }
+
+        .dashboard-content {
+            padding: 25px;
+        }
+
+        .pills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .pill {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pill-orange {
+            background: var(--pill-orange);
+        }
+
+        .pill-blue {
+            background: var(--pill-blue);
+        }
+
+        .pill:hover {
+            filter: brightness(1.2);
+        }
+
+        .banner-wrapper {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #2B2B2B;
+        }
+
+        .banner-wrapper img {
+            width: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a class="nav-item"><i class="fa-solid fa-gauge"></i><span>Dashboard</span></a>
+        <a class="nav-item" onclick="launchResearchTwin()"><i class="fa-solid fa-brain"></i><span>ResearchTwin</span></a>
+        <a class="nav-item"><i class="fa-solid fa-mobile-screen-button"></i><span>LPU Touch</span></a>
+        <a class="nav-item"><i class="fa-solid fa-comments"></i><span>LPU Live</span></a>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topnav">
+            <div style="font-size:22px; font-weight:800; color:#FF9900;"><i class="fa-solid fa-sun"></i> UMS</div>
+            <div style="font-size:14px; color:#888;">Logged in as: <b style="color:#FF9900;">Aishwarya</b></div>
+        </div>
+
+        <div class="dashboard-content">
+            <h2 style="font-size:24px; margin-bottom:18px;">Important Links</h2>
+            <div class="pills-container">
+                <button class="pill pill-orange" onclick="launchResearchTwin()">
+                    <i class="fa-solid fa-brain"></i> ResearchTwin (Launch Application) <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </button>
+                <button class="pill pill-orange">Hostel Booking</button>
+                <button class="pill pill-orange">Apply for Edu-Revolution</button>
+                <button class="pill pill-blue">RMS</button>
+                <button class="pill pill-blue">Fee Dashboard</button>
+            </div>
+
+            <div class="banner-wrapper">
+                <img src="https://www.lpu.in/lpu-assets/images/ums-the-world-ranking.jpg" alt="LPU Rankings">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function launchResearchTwin() {
+            window.open("researchtwin.html", "_blank");
+        }
+    </script>
+</body>
+</html>
