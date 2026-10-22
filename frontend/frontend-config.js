@@ -1,1 +1,2 @@
-window.RESEARCHTWIN_API_BASE = window.RESEARCHTWIN_API_BASE || "http://127.0.0.1:8000";
+﻿window.RESEARCHTWIN_API_BASE = window.RESEARCHTWIN_API_BASE || "https://researchtwin-api.onrender.com";
+
