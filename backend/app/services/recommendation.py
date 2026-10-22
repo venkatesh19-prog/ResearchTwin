@@ -262,7 +262,9 @@ def calculate_features(
     # Semantic similarity
     # ---------------------------------------------
 
-    from .semantic_matching import model
+    from .semantic_matching import get_model
+
+    model = get_model()
 
     student_embedding = model.encode(
         [student_text],

@@ -3,7 +3,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
-model = SentenceTransformer(MODEL_NAME)
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def get_model():
+    return SentenceTransformer(MODEL_NAME)
 
 
 def build_student_text(student_profile: dict) -> str:
@@ -49,12 +54,12 @@ def calculate_semantic_similarity(student_profile: dict, researchers):
     if not student_text or not researcher_texts:
         return []
 
-    student_embedding = model.encode(
+    student_embedding = get_model().encode(
         [student_text],
         normalize_embeddings=True
     )
 
-    researcher_embeddings = model.encode(
+    researcher_embeddings = get_model().encode(
         researcher_texts,
         normalize_embeddings=True
     )
