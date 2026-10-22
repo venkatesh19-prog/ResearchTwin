@@ -6,8 +6,8 @@ fastapi==0.141.1
 greenlet==3.5.6
 h11==0.16.0
 idna==3.19
-numpy==2.5.3
-pandas==3.0.5
+numpy==2.2.6
+pandas==2.3.3
 pydantic==2.13.5
 pydantic_core==2.46.5
 python-dateutil==2.9.0.post0
@@ -18,7 +18,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.4
 uvicorn==0.53.0
-scikit-learn==1.9.1
+scikit-learn==1.7.2
 joblib==1.6.0
 shap==0.52.0
 sentence-transformers==6.1.0
