@@ -1,8 +1,9 @@
+import os
 from fastapi import FastAPI
 
 from .database import Base, engine
 from . import models
-
+from fastapi.middleware.cors import CORSMiddleware
 from .api.researchers import router as researcher_router
 from .api.students import router as student_router
 
@@ -24,7 +25,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(dict.fromkeys(["http://127.0.0.1:5500", "http://localhost:5500"] + [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "").split(",") if origin.strip()])),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 # --------------------------------------------------
 # ROUTERS
 # --------------------------------------------------

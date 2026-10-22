@@ -192,6 +192,7 @@
             color: #FF8878;
         }
     </style>
+<script src="frontend-config.js"></script>
 </head>
 <body>
 
@@ -229,16 +230,16 @@
                 <form onsubmit="saveStudentProfile(event)">
                     <label style="font-size:12px; color:var(--text-sub);">Student ID</label>
                     <input type="text" id="sId" value="S001" readonly>
-                    
+
                     <label style="font-size:12px; color:var(--text-sub);">Research Interests</label>
                     <input type="text" id="sAreas" placeholder="e.g. Artificial Intelligence, Machine Learning">
-                    
+
                     <label style="font-size:12px; color:var(--text-sub);">Technical Skills</label>
                     <input type="text" id="sSkills" placeholder="e.g. Python, PyTorch, SQL">
-                    
+
                     <label style="font-size:12px; color:var(--text-sub);">Projects & Academic Details</label>
                     <textarea id="sProjects" rows="3" placeholder="Describe recent projects or publications"></textarea>
-                    
+
                     <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk"></i> Update & Re-index Profile</button>
                 </form>
             </div>
@@ -256,151 +257,272 @@
     </div>
 
     <script>
-        const API_BASE = "http://127.0.0.1:8000";
 
-        function switchTab(viewId) {
-            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-menu a').forEach(e => e.classList.remove('active'));
+const API_BASE = (window.RESEARCHTWIN_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
+const PROFILE_KEY = "researchtwin.studentProfile";
 
-            document.getElementById(viewId).classList.add('active');
-            
-            if (viewId === 'matchView') {
-                document.getElementById('navMatches').classList.add('active');
-                fetchMatches();
-            }
-            if (viewId === 'studentView') {
-                document.getElementById('navStudent').classList.add('active');
-                loadStudentProfile();
-            }
-            if (viewId === 'facultyView') {
-                document.getElementById('navFaculty').classList.add('active');
-                searchFaculty();
-            }
+const $ = (id) => document.getElementById(id);
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function getStudentProfile() {
+    return {
+        research_areas: $("sAreas").value.trim(),
+        expertise: "Machine Learning",
+        skills: $("sSkills").value.trim(),
+        projects: $("sProjects").value.trim(),
+        publications: "",
+        top_k: 5
+    };
+}
+
+async function apiRequest(path, options = {}) {
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+            ...(options.body ? { "Content-Type": "application/json" } : {}),
+            ...options.headers
+        }
+    });
+
+    if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`API ${response.status}: ${detail}`);
+    }
+
+    return response.json();
+}
+
+function switchTab(viewId) {
+    document.querySelectorAll(".view-section")
+        .forEach(el => el.classList.remove("active"));
+
+    document.querySelectorAll(".nav-menu a")
+        .forEach(el => el.classList.remove("active"));
+
+    $(viewId).classList.add("active");
+
+    const navIds = {
+        matchView: "navMatches",
+        studentView: "navStudent",
+        facultyView: "navFaculty"
+    };
+
+    $(navIds[viewId])?.classList.add("active");
+
+    if (viewId === "matchView") fetchMatches();
+    if (viewId === "studentView") loadStudentProfile();
+    if (viewId === "facultyView") searchFaculty();
+}
+
+async function fetchMatches() {
+    const container = $("matchesContainer");
+    container.textContent = "Running researcher matching…";
+
+    try {
+        const profile = getStudentProfile();
+
+        if (!profile.research_areas && !profile.skills &&
+            !profile.projects && !profile.publications) {
+            container.innerHTML =
+                '<p style="color:#A0A5B5">Add your research interests, skills or projects in Student Profile first.</p>';
+            return;
         }
 
-        async function fetchMatches() {
-            const container = document.getElementById('matchesContainer');
-            container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i> Running ML Matching Engine & SHAP Explainers...</div>';
+        const data = await apiRequest("/recommendations/researchers", {
+            method: "POST",
+            body: JSON.stringify(profile)
+        });
 
-            try {
-                const res = await fetch(`${API_BASE}/recommend`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ student_id: "S001", top_k: 5 })
-                });
-                const data = await res.json();
-                renderMatches(data.recommendations);
-            } catch (err) {
-                container.innerHTML = '<div style="color:#FF4D4D; text-align:center; padding:20px;">FastAPI server offline. Please start the server using command:<br><br><code style="background:#222; padding:8px 12px; border-radius:4px; color:#FF9900;">uvicorn main:app --reload</code></div>';
-            }
-        }
+        renderMatches(data.recommendations || []);
+    } catch (error) {
+        container.innerHTML =
+            `<p style="color:#FF8878">Could not load recommendations: ${escapeHTML(error.message)}. Check that the backend is running and CORS is configured.</p>`;
+    }
+}
 
-        function renderMatches(recs) {
-            const container = document.getElementById('matchesContainer');
-            container.innerHTML = "";
+function renderMatches(recommendations) {
+    const container = $("matchesContainer");
+    container.innerHTML = "";
 
-            if (!recs || recs.length === 0) {
-                container.innerHTML = '<div style="color:#888; text-align:center;">No matching faculty found.</div>';
-                return;
-            }
+    if (!recommendations.length) {
+        container.textContent = "No researchers found. Check that researcher records are available.";
+        return;
+    }
 
-            recs.forEach(r => {
-                const matchedTags = r.skill_gap.matched_skills.map(s => `<span class="tag tag-match"><i class="fa-solid fa-check"></i> ${s}</span>`).join('');
-                const missingTags = r.skill_gap.missing_skills.map(s => `<span class="tag tag-miss"><i class="fa-solid fa-xmark"></i> ${s}</span>`).join('');
+    recommendations.forEach((researcher) => {
+        const score = Number(researcher.match_score);
+        const scoreLabel = Number.isFinite(score)
+            ? `${(score * 100).toFixed(1)}% model score`
+            : "Score unavailable";
 
-                const shapHtml = (r.shap_explanation || []).map(s => `
-                    <div style="font-size:12px; display:flex; justify-content:space-between; margin:3px 0;">
-                        <span>${s.feature}</span>
-                        <b style="color:${s.shap_impact >= 0 ? '#28A745' : '#FF4D4D'};">${s.shap_impact >= 0 ? '+' : ''}${s.shap_impact}</b>
-                    </div>
-                `).join('');
+        const matched = Array.isArray(researcher.matched_skills)
+            ? researcher.matched_skills : [];
 
-                const steps = (r.skill_gap.improvement_path || []).map(step => `<li style="font-size:12px; color:var(--text-sub); margin-left:15px; margin-top:3px;">${step}</li>`).join('');
+        const missing = Array.isArray(researcher.skill_gap)
+            ? researcher.skill_gap : [];
 
-                const card = document.createElement('div');
-                card.className = 'match-card';
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <div><h3>${r.researcher_name}</h3><span style="font-size:13px; color:var(--text-sub);">${r.department}</span></div>
-                        <div class="score-badge">${r.match_score}% Match</div>
-                    </div>
-                    <p style="font-size:14px; margin-bottom:10px;">${r.explanation}</p>
-                    <div style="margin-bottom:10px;">
-                        <div style="font-size:12px; color:var(--text-sub); margin-bottom:4px;">Skills & Prerequisite Gaps:</div>
-                        ${matchedTags} ${missingTags}
-                    </div>
-                    ${steps ? `<div style="background:#12141D; padding:10px; border-radius:6px; margin-top:8px;">
-                        <div style="font-size:12px; font-weight:bold; color:#FF9900;"><i class="fa-solid fa-route"></i> Suggested Improvement Path:</div>
-                        <ul>${steps}</ul>
-                    </div>` : ''}
-                    <div class="shap-box">
-                        <div style="font-size:12px; font-weight:bold; color:var(--primary); margin-bottom:5px;"><i class="fa-solid fa-chart-bar"></i> SHAP Feature Attribution:</div>
-                        ${shapHtml}
-                    </div>
-                `;
-                container.appendChild(card);
+        const explanation = researcher.explanation || {};
+        const contributions = explanation.all_contributions || [];
+
+        const matchedTags = matched.map(skill =>
+            `<span class="tag tag-match">✓ ${escapeHTML(skill)}</span>`
+        ).join("");
+
+        const missingTags = missing.map(skill =>
+            `<span class="tag tag-miss">＋ ${escapeHTML(skill)}</span>`
+        ).join("");
+
+        const contributionHTML = contributions.slice(0, 5).map(item => {
+            const impact = Number(item.shap_value);
+            const positive = impact >= 0;
+
+            return `<div style="display:flex;justify-content:space-between;gap:12px;margin:5px 0;font-size:12px">
+                <span>${escapeHTML(item.feature)}</span>
+                <b style="color:${positive ? "#28A745" : "#FF4D4D"}">
+                    ${positive ? "+" : ""}${Number.isFinite(impact) ? impact.toFixed(4) : "N/A"}
+                </b>
+            </div>`;
+        }).join("");
+
+        const card = document.createElement("div");
+        card.className = "match-card";
+
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px">
+                <div>
+                    <h3>${escapeHTML(researcher.name)}</h3>
+                    <span style="font-size:13px;color:var(--text-sub)">
+                        ${escapeHTML(researcher.department || "Department not specified")}
+                    </span>
+                </div>
+                <div class="score-badge">${scoreLabel}</div>
+            </div>
+
+            <p style="font-size:14px;margin-bottom:12px">
+                ${escapeHTML(explanation.summary || researcher.why_recommended || "No explanation available.")}
+            </p>
+
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;color:var(--text-sub);margin-bottom:5px">
+                    Shared skills
+                </div>
+                ${matchedTags || '<span style="color:var(--text-sub)">No shared skills identified</span>'}
+            </div>
+
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;color:var(--text-sub);margin-bottom:5px">
+                    Skills to develop
+                </div>
+                ${missingTags || '<span style="color:var(--text-sub)">No skill gaps identified</span>'}
+            </div>
+
+            <div class="shap-box">
+                <div style="font-size:12px;font-weight:bold;color:var(--primary);margin-bottom:8px">
+                    Model explanation — feature contributions
+                </div>
+                ${contributionHTML || '<span style="color:var(--text-sub)">No feature explanations returned.</span>'}
+                <p style="font-size:11px;color:var(--text-sub);margin-top:8px">
+                    Contributions show which input features influenced this model output.
+                    They are not probabilities of successful collaboration.
+                </p>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function loadStudentProfile() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
+        $("sAreas").value = saved.research_areas || "";
+        $("sSkills").value = saved.skills || "";
+        $("sProjects").value = saved.projects || "";
+    } catch {
+        console.warn("Could not load the locally saved student profile.");
+    }
+}
+
+function saveStudentProfile(event) {
+    event.preventDefault();
+
+    const profile = getStudentProfile();
+
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+
+    alert("Profile saved in this browser. It has not been saved to the backend database.");
+    switchTab("matchView");
+}
+
+async function searchFaculty() {
+    const list = $("facultyList");
+    const query = ($("facSearch").value || "").trim().toLowerCase();
+
+    list.textContent = "Loading faculty directory…";
+
+    try {
+        const researchers = await apiRequest("/researchers/");
+        const filtered = (Array.isArray(researchers) ? researchers : [])
+            .filter(person => {
+                const searchable = [
+                    person.name,
+                    person.department,
+                    person.designation,
+                    person.research_areas,
+                    person.expertise,
+                    person.skills,
+                    person.publications,
+                    person.projects
+                ].join(" ").toLowerCase();
+
+                return searchable.includes(query);
             });
+
+        list.innerHTML = "";
+
+        if (!filtered.length) {
+            list.textContent = "No researchers match that search.";
+            return;
         }
 
-        async function loadStudentProfile() {
-            try {
-                const res = await fetch(`${API_BASE}/api/student/profile/S001`);
-                const data = await res.json();
-                document.getElementById('sAreas').value = data.research_areas || "";
-                document.getElementById('sSkills').value = data.skills || "";
-                document.getElementById('sProjects').value = data.projects || "";
-            } catch (e) {
-                console.error("Failed to load profile:", e);
-            }
-        }
+        filtered.forEach(person => {
+            const item = document.createElement("div");
+            item.style.cssText = "padding:15px 0;border-bottom:1px solid var(--border)";
 
-        async function saveStudentProfile(e) {
-            e.preventDefault();
-            const payload = {
-                student_id: document.getElementById('sId').value,
-                name: "Aishwarya",
-                research_areas: document.getElementById('sAreas').value,
-                expertise: "Machine Learning",
-                skills: document.getElementById('sSkills').value,
-                projects: document.getElementById('sProjects').value,
-                publications: "None"
-            };
-            try {
-                const res = await fetch(`${API_BASE}/api/student/profile/update`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                alert(data.message);
-                switchTab('matchView');
-            } catch (err) {
-                alert("Failed to update profile. Make sure FastAPI server is running.");
-            }
-        }
+            item.innerHTML = `
+                <b style="color:#FFF">${escapeHTML(person.name)}</b>
+                <span style="color:var(--text-sub);font-size:12px">
+                    (${escapeHTML(person.department || "Department not specified")})
+                </span>
+                <p style="color:var(--text-sub);font-size:13px;margin-top:6px">
+                    ${escapeHTML(person.research_areas || person.expertise || "Research interests not provided")}
+                </p>
+                <p style="color:var(--text-sub);font-size:12px;margin-top:4px">
+                    Skills: ${escapeHTML(person.skills || "Not listed")}
+                </p>
+            `;
 
-        async function searchFaculty() {
-            const q = document.getElementById('facSearch')?.value || "";
-            try {
-                const res = await fetch(`${API_BASE}/api/teachers/search?query=${encodeURIComponent(q)}`);
-                const data = await res.json();
-                const list = document.getElementById('facultyList');
-                if (!data.teachers || data.teachers.length === 0) {
-                    list.innerHTML = '<div style="color:#888; padding:15px 0;">No researchers found matching keyword.</div>';
-                    return;
-                }
-                list.innerHTML = data.teachers.map(t => `
-                    <div style="padding:15px 0; border-bottom:1px solid var(--border);">
-                        <b style="color:#FFF;">${t.name}</b> <span style="color:var(--text-sub); font-size:12px;">(${t.department})</span><br>
-                        <p style="color:var(--text-sub); font-size:13px; margin-top:4px;">${t.project_description}</p>
-                    </div>
-                `).join('');
-            } catch (err) {
-                console.error("Search failed:", err);
-            }
-        }
+            list.appendChild(item);
+        });
+    } catch (error) {
+        list.textContent = `Faculty search failed: ${error.message}. Check the backend and CORS configuration.`;
+    }
+}
 
-        window.onload = function() { fetchMatches(); };
+window.addEventListener("DOMContentLoaded", () => {
+    loadStudentProfile();
+    fetchMatches();
+});
+
     </script>
 </body>
 </html>

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..services.recommendation import generate_recommendations
-
+from ..services.readiness_roadmap import generate_readiness_roadmap
 
 router = APIRouter(
     prefix="/recommendations",
@@ -26,6 +26,7 @@ def recommend_researchers(
     student: StudentProfile,
     db: Session = Depends(get_db)
 ):
+
     student_profile = {
         "research_areas": student.research_areas,
         "expertise": student.expertise,
@@ -44,3 +45,46 @@ def recommend_researchers(
         "student_profile": student_profile,
         "recommendations": recommendations
     }
+
+from pydantic import Field
+
+
+class RoadmapRequest(BaseModel):
+    researcher_id: int
+    matched_skills: list[str] = Field(default_factory=list)
+    skill_gap: list[str] = Field(default_factory=list)
+
+
+@router.post("/roadmap/researcher")
+def create_researcher_roadmap(
+    request: RoadmapRequest,
+    db: Session = Depends(get_db)
+):
+    from ..models import Researcher
+
+    researcher = db.query(Researcher).filter(
+        Researcher.id == request.researcher_id
+    ).first()
+
+    if researcher is None:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=404,
+            detail="Researcher not found"
+        )
+
+    # Derive skill data from the actual database record.
+    # Do not trust client-submitted skill lists as authoritative.
+    from ..services.skill_gap import calculate_skill_gap
+
+    skill_data = calculate_skill_gap("", researcher)
+
+    return generate_readiness_roadmap(
+        researcher={
+            "researcher_id": researcher.id,
+            "name": researcher.name,
+            "department": researcher.department
+        },
+        matched_skills=request.matched_skills,
+        skill_gap=skill_data["skill_gap"]
+    )
