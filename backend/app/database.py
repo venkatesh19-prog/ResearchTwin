@@ -3,7 +3,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./researchtwin.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_PATH = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "researchtwin.db")
+    )
+    DATABASE_URL = "sqlite:///" + DATABASE_PATH.replace("\\", "/")
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)

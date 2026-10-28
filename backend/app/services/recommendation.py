@@ -9,7 +9,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from ..models import Researcher
 from .researcher_intelligence import build_structured_profile
-from .semantic_matching import build_student_text, build_researcher_text
+from .semantic_matching import (
+    build_student_text,
+    build_researcher_text,
+    calculate_semantic_similarity,
+)
 from .skill_gap import calculate_skill_gap
 
 
@@ -23,7 +27,7 @@ MODEL_PATH = os.path.abspath(
         "..",
         "..",
         "models",
-        "researchtwin_logistic.joblib"
+        "researchtwin_logistic_render.joblib"
     )
 )
 
@@ -79,14 +83,19 @@ def get_shap_explainer():
 
         X_background = training_df[features]
 
+        # Limit SHAP background rows to reduce explanation overhead.
+        X_background = X_background.sample(
+            n=min(50, len(X_background)),
+            random_state=42
+        )
+
         X_background_scaled = scaler.transform(
             X_background
         )
 
         _shap_explainer = shap.LinearExplainer(
             classifier,
-            X_background_scaled,
-            max_samples=len(X_background_scaled)
+            X_background_scaled
         )
 
     return _shap_explainer
@@ -205,7 +214,8 @@ def calculate_department_match(
 
 def calculate_features(
     student_profile,
-    researcher
+    researcher,
+    semantic_score=None,
 ):
 
     researcher_profile = build_structured_profile(
@@ -262,26 +272,29 @@ def calculate_features(
     # Semantic similarity
     # ---------------------------------------------
 
-    from .semantic_matching import get_model
+    if semantic_score is None:
+        from .semantic_matching import get_model
 
-    model = get_model()
+        model = get_model()
 
-    student_embedding = model.encode(
-        [student_text],
-        normalize_embeddings=True
-    )
+        student_embedding = model.encode(
+            [student_text],
+            normalize_embeddings=True
+        )
 
-    researcher_embedding = model.encode(
-        [researcher_text],
-        normalize_embeddings=True
-    )
+        researcher_embedding = model.encode(
+            [researcher_text],
+            normalize_embeddings=True
+        )
 
-    semantic_similarity = float(
-        cosine_similarity(
-            student_embedding,
-            researcher_embedding
-        )[0][0]
-    )
+        semantic_similarity = float(
+            cosine_similarity(
+                student_embedding,
+                researcher_embedding
+            )[0][0]
+        )
+    else:
+        semantic_similarity = float(semantic_score)
 
     # ---------------------------------------------
     # Department
@@ -472,26 +485,32 @@ def generate_recommendations(
     features = bundle["features"]
 
     # -----------------------------------------------------
-    # STEP 1: Feature engineering
+    # STEP 1: Batch semantic similarity and feature engineering
     # -----------------------------------------------------
+
+    semantic_results = calculate_semantic_similarity(
+        student_profile,
+        researchers
+    )
+
+    semantic_scores = {
+        result["researcher_id"]: result["semantic_score"]
+        for result in semantic_results
+    }
 
     candidate_rows = []
 
     for researcher in researchers:
-
         feature_dict = calculate_features(
             student_profile,
-            researcher
+            researcher,
+            semantic_score=semantic_scores.get(researcher.id, 0.0),
         )
 
         candidate_rows.append({
-
-            "researcher":
-                researcher,
-
+            "researcher": researcher,
             **feature_dict
         })
-
     # -----------------------------------------------------
     # STEP 2: ML feature matrix
     # -----------------------------------------------------
