@@ -115,7 +115,7 @@
             gap: 10px;
         }
 
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 12px;
             background: #12141D;
@@ -126,9 +126,16 @@
             font-size: 14px;
         }
 
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--primary);
+        }
+
+        .field-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 6px;
         }
 
         .btn {
@@ -191,12 +198,479 @@
             background: rgba(217, 56, 30, 0.3);
             color: #FF8878;
         }
+
+        .btn-small {
+            padding: 7px 12px;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-top: 8px;
+        }
+
+        .card-actions {
+            border-top: 1px solid var(--border);
+            margin-top: 14px;
+            padding-top: 6px;
+        }
+
+        .roadmap-slot {
+            margin-top: 12px;
+        }
+
+        .roadmap-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 12px;
+            background: #12141D;
+        }
+
+        .roadmap-item h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+        }
+
+        .priority-pill {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+
+        .priority-high {
+            background: rgba(217, 56, 30, 0.25);
+            color: #FF8878;
+        }
+
+        .priority-medium {
+            background: rgba(255, 165, 0, 0.22);
+            color: #FFB84D;
+        }
+
+        .priority-low {
+            background: rgba(0, 120, 212, 0.22);
+            color: #70B5FF;
+        }
+
+        .milestone-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            font-size: 13px;
+            margin: 7px 0;
+            cursor: pointer;
+        }
+
+        .milestone-row input {
+            width: auto;
+            margin-top: 2px;
+            flex: none;
+            cursor: pointer;
+        }
+
+        .milestone-row.done span {
+            color: var(--text-sub);
+            text-decoration: line-through;
+        }
+
+        .roadmap-label {
+            font-size: 11px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .status-pending {
+            background: rgba(255, 165, 0, 0.22);
+            color: #FFB84D;
+        }
+
+        .status-accepted {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--accent-green);
+        }
+
+        .status-rejected {
+            background: rgba(217, 56, 30, 0.25);
+            color: #FF8878;
+        }
+
+        .request-item {
+            border-bottom: 1px solid var(--border);
+            padding: 15px 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .auth-shell {
+            display: none;
+            width: 100%;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(217, 101, 0, 0.18), transparent 38%),
+                var(--bg-dark);
+        }
+
+        .auth-shell:not(.hidden) {
+            display: flex;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 430px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+        }
+
+        .auth-card .brand {
+            padding: 0 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .auth-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 20px 0 6px;
+        }
+
+        .auth-subheading {
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #12141D;
+            color: var(--text-sub);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .auth-tab.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(217, 101, 0, 0.12);
+        }
+
+        .auth-note {
+            color: var(--text-sub);
+            font-size: 11px;
+            line-height: 1.5;
+            margin-top: 16px;
+        }
+
+        .form-error {
+            color: #FF8878;
+            font-size: 13px;
+            min-height: 18px;
+            margin: 4px 0 8px;
+        }
+
+        .form-success {
+            color: var(--accent-green);
+            font-size: 13px;
+            min-height: 18px;
+            margin: 4px 0 8px;
+        }
+
+        .form-success.error {
+            color: #FF8878;
+        }
+
+        .btn-secondary {
+            background: #12141D;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+
+        .btn-secondary:hover {
+            background: #1A1D26;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 20px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .user-chip {
+            color: var(--text-sub);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            overflow-wrap: anywhere;
+        }
+
+        .user-chip b {
+            color: #FFF;
+        }
+
+        .completion-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .completion-pill {
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            background: rgba(40, 167, 69, 0.15);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .completion-track {
+            flex: 1;
+            height: 6px;
+            background: #12141D;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .completion-fill {
+            height: 100%;
+            width: 0;
+            background: var(--accent-green);
+            transition: width 180ms ease;
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: var(--text-sub);
+            min-height: 18px;
+            margin-top: 10px;
+        }
+
+        .status-text.error {
+            color: #FF8878;
+        }
+
+        .status-text.success {
+            color: var(--accent-green);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 8px 10px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .brand {
+                width: 100%;
+                padding: 0 0 8px;
+                border-bottom: none;
+            }
+
+            .brand h3 {
+                font-size: 14px;
+            }
+
+            .brand span {
+                display: none;
+            }
+
+            .brand-icon {
+                width: 30px;
+                height: 30px;
+                font-size: 15px;
+            }
+
+            .nav-menu {
+                display: flex;
+                width: 100%;
+                margin-top: 0;
+            }
+
+            .nav-menu li {
+                flex: 1;
+            }
+
+            .nav-menu li a {
+                justify-content: center;
+                padding: 10px 4px;
+                border-left: none;
+                white-space: nowrap;
+                font-size: 12px;
+            }
+
+            .nav-menu li a i {
+                display: none;
+            }
+
+            .nav-menu li a.active {
+                border-left: none;
+                border-bottom: 3px solid var(--primary);
+            }
+
+            .main-content {
+                padding: 16px;
+                overflow-y: visible;
+            }
+
+            .sidebar-footer {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-top: 8px;
+                padding: 8px 0 0;
+            }
+
+            .user-chip {
+                margin-bottom: 0;
+            }
+
+            .sidebar-footer .btn {
+                padding: 8px 12px;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .auth-shell {
+                padding: 16px;
+                min-height: 100dvh;
+            }
+
+            .auth-card {
+                padding: 20px;
+            }
+
+            #matchesContainer .match-card > div:first-child {
+                flex-wrap: wrap;
+            }
+        }
     </style>
 <script src="frontend-config.js"></script>
+<script src="api-client.js"></script>
 </head>
 <body>
 
-    <div class="sidebar">
+    <!-- AUTHENTICATION -->
+    <main class="auth-shell hidden" id="authShell">
+        <div class="auth-card">
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-brain"></i></div>
+                <div>
+                    <h3 style="font-size:16px;">ResearchTwin</h3>
+                    <span style="font-size:11px; color:var(--text-sub);">ML Matching Platform</span>
+                </div>
+            </div>
+
+            <div class="auth-tabs" role="tablist">
+                <button type="button" class="auth-tab active" id="tabLogin" role="tab" aria-selected="true" onclick="showAuthMode('login')">Sign in</button>
+                <button type="button" class="auth-tab" id="tabRegister" role="tab" aria-selected="false" onclick="showAuthMode('register')">Create account</button>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+                <div class="auth-heading">Sign in</div>
+                <div class="auth-subheading">Use your ResearchTwin student or faculty account.</div>
+
+                <label class="field-label" for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" autocomplete="username" maxlength="254" required>
+
+                <label class="field-label" for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" autocomplete="current-password" maxlength="128" required>
+
+                <div class="form-error" id="loginError" role="alert"></div>
+
+                <button type="submit" class="btn" id="loginBtn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sign in
+                </button>
+            </form>
+
+            <form id="registerForm" class="hidden" onsubmit="handleRegister(event)" novalidate>
+                <div class="auth-heading">Create account</div>
+                <div class="auth-subheading">Demo registration for this application. This is not institutional single sign-on.</div>
+
+                <label class="field-label" for="regName">Full name</label>
+                <input type="text" id="regName" autocomplete="name" maxlength="120" required>
+
+                <label class="field-label" for="regEmail">Email</label>
+                <input type="email" id="regEmail" autocomplete="username" maxlength="254" required>
+
+                <label class="field-label" for="regPassword">Password (minimum 8 characters)</label>
+                <input type="password" id="regPassword" autocomplete="new-password" minlength="8" maxlength="128" required>
+
+                <label class="field-label" for="regRole">I am a</label>
+                <select id="regRole">
+                    <option value="student">Student</option>
+                    <option value="faculty">Faculty / Researcher</option>
+                </select>
+
+                <div class="form-error" id="registerError" role="alert"></div>
+
+                <button type="submit" class="btn" id="registerBtn">
+                    <i class="fa-solid fa-user-plus"></i> Create account
+                </button>
+            </form>
+
+            <div class="form-success" id="authNotice" role="status"></div>
+
+            <p class="auth-note">
+                Demo authentication. Passwords are hashed on the server and are never stored in this
+                browser. The session token is kept in this tab's sessionStorage and is cleared when you
+                sign out or close the tab. This is not an HttpOnly cookie and is not equivalent to
+                institutional single sign-on.
+            </p>
+        </div>
+    </main>
+
+    <!-- APPLICATION -->
+    <aside class="sidebar hidden" id="appSidebar">
         <div class="brand">
             <div class="brand-icon"><i class="fa-solid fa-brain"></i></div>
             <div>
@@ -204,64 +678,260 @@
                 <span style="font-size:11px; color:var(--text-sub);">ML Matching Platform</span>
             </div>
         </div>
-        <ul class="nav-menu">
-            <li><a href="#" class="active" id="navMatches" onclick="switchTab('matchView')"><i class="fa-solid fa-wand-magic-sparkles"></i> ML Recommendations</a></li>
-            <li><a href="#" id="navStudent" onclick="switchTab('studentView')"><i class="fa-solid fa-user-gear"></i> Student Profile</a></li>
-            <li><a href="#" id="navFaculty" onclick="switchTab('facultyView')"><i class="fa-solid fa-graduation-cap"></i> Faculty Directory</a></li>
-        </ul>
-    </div>
+        <ul class="nav-menu" id="navMenu"></ul>
+        <div class="sidebar-footer">
+            <div class="user-chip" id="userChip"></div>
+            <button type="button" class="btn btn-secondary" id="logoutBtn" onclick="handleLogout()">
+                <i class="fa-solid fa-right-from-bracket"></i> Sign out
+            </button>
+        </div>
+    </aside>
 
-    <div class="main-content">
+    <main class="main-content hidden" id="appMain">
 
-        <!-- 1. ML RECOMMENDATIONS & EXPLAINABILITY -->
+        <!-- STUDENT: ML RECOMMENDATIONS & EXPLAINABILITY -->
         <div id="matchView" class="view-section active">
             <div class="card">
-                <div class="card-title"><i class="fa-solid fa-robot"></i> Faculty Matching & Recommendations</div>
-                <p style="color:var(--text-sub); margin-bottom:15px;">Calculates student-researcher compatibility, SHAP attributions, and readiness roadmaps.</p>
-                <button class="btn" onclick="fetchMatches()"><i class="fa-solid fa-rotate"></i> Run ML Match Engine</button>
+                <div class="card-title"><i class="fa-solid fa-robot"></i> Faculty Matching &amp; Recommendations</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Recommendations are computed from the student profile saved in the database.
+                    Scores are model outputs, not calibrated probabilities.
+                </p>
+                <div class="completion-row">
+                    <span class="completion-pill" id="matchCompletion">Profile 0%</span>
+                    <div class="completion-track"><div class="completion-fill" id="matchCompletionFill"></div></div>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;">
+                    <button type="button" class="btn" id="refreshMatchesBtn" onclick="refreshRecommendations()">
+                        <i class="fa-solid fa-rotate"></i> Refresh Recommendations
+                    </button>
+                    <label for="recommendationCount" style="color:var(--text-sub);font-size:14px;">Show:</label>
+                    <select id="recommendationCount" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:#FFF;font-size:14px;">
+                        <option value="3">3 researchers</option>
+                        <option value="5" selected>5 researchers</option>
+                        <option value="10">10 researchers</option>
+                    </select>
+                </div>
+                <p class="status-text" id="matchStatus" role="status"></p>
             </div>
             <div id="matchesContainer"></div>
         </div>
 
-        <!-- 2. STUDENT PROFILE -->
+        <!-- STUDENT PROFILE -->
         <div id="studentView" class="view-section">
             <div class="card">
                 <div class="card-title"><i class="fa-solid fa-id-card"></i> Student Research Profile</div>
-                <form onsubmit="saveStudentProfile(event)">
-                    <label style="font-size:12px; color:var(--text-sub);">Student ID</label>
-                    <input type="text" id="sId" value="S001" readonly>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Saved fields are stored in the database and used for matching.
+                </p>
+                <div class="completion-row">
+                    <span class="completion-pill" id="studentCompletion">Profile 0%</span>
+                    <div class="completion-track"><div class="completion-fill" id="studentCompletionFill"></div></div>
+                </div>
+                <form onsubmit="handleSaveStudentProfile(event)" novalidate>
+                    <label class="field-label" for="sEmail">Account email</label>
+                    <input type="email" id="sEmail" readonly>
 
-                    <label style="font-size:12px; color:var(--text-sub);">Research Interests</label>
-                    <input type="text" id="sAreas" placeholder="e.g. Artificial Intelligence, Machine Learning">
+                    <label class="field-label" for="sAreas">Research interests</label>
+                    <input type="text" id="sAreas" maxlength="4000" placeholder="e.g. Artificial Intelligence, Machine Learning">
 
-                    <label style="font-size:12px; color:var(--text-sub);">Technical Skills</label>
-                    <input type="text" id="sSkills" placeholder="e.g. Python, PyTorch, SQL">
+                    <label class="field-label" for="sExpertise">Area of expertise</label>
+                    <input type="text" id="sExpertise" maxlength="4000" placeholder="e.g. Machine Learning">
 
-                    <label style="font-size:12px; color:var(--text-sub);">Projects & Academic Details</label>
-                    <textarea id="sProjects" rows="3" placeholder="Describe recent projects or publications"></textarea>
+                    <label class="field-label" for="sSkills">Technical skills</label>
+                    <input type="text" id="sSkills" maxlength="4000" placeholder="e.g. Python, PyTorch, SQL">
 
-                    <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk"></i> Update & Re-index Profile</button>
+                    <label class="field-label" for="sCourses">Courses and academic subjects</label>
+                    <input type="text" id="sCourses" maxlength="4000" placeholder="e.g. Data Structures, Linear Algebra">
+
+                    <label class="field-label" for="sProjects">Projects</label>
+                    <textarea id="sProjects" rows="3" maxlength="4000" placeholder="Describe recent projects"></textarea>
+
+                    <label class="field-label" for="sPublications">Publications</label>
+                    <textarea id="sPublications" rows="3" maxlength="4000" placeholder="Titles, venues, or abstracts"></textarea>
+
+                    <label class="field-label" for="sAcademic">Academic details and research experience</label>
+                    <textarea id="sAcademic" rows="3" maxlength="4000" placeholder="Degree, year, research experience"></textarea>
+
+                    <button type="submit" class="btn" id="saveStudentBtn">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Profile
+                    </button>
+                    <button type="button" class="btn btn-secondary hidden" id="retryStudentBtn" onclick="loadStudentProfile()">
+                        <i class="fa-solid fa-rotate"></i> Retry
+                    </button>
+                    <p class="status-text" id="studentStatus" role="status"></p>
                 </form>
             </div>
         </div>
 
-        <!-- 3. FACULTY DIRECTORY & SEARCH -->
-        <div id="facultyView" class="view-section">
+        <!-- FACULTY PROFILE -->
+        <div id="facultyProfileView" class="view-section">
             <div class="card">
-                <div class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Faculty Directory & Research Search</div>
-                <input type="text" id="facSearch" placeholder="Search by research domain, topic, or required skill keyword..." onkeyup="searchFaculty()">
+                <div class="card-title"><i class="fa-solid fa-id-badge"></i> Faculty / Researcher Profile</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    This account profile is separate from the researcher directory records used for
+                    matching. Editing it does not modify any researcher record.
+                </p>
+                <div class="completion-row">
+                    <span class="completion-pill" id="facultyCompletion">Profile 0%</span>
+                    <div class="completion-track"><div class="completion-fill" id="facultyCompletionFill"></div></div>
+                </div>
+                <form onsubmit="handleSaveFacultyProfile(event)" novalidate>
+                    <label class="field-label" for="fEmail">Account email</label>
+                    <input type="email" id="fEmail" readonly>
+
+                    <label class="field-label" for="fDepartment">Department</label>
+                    <input type="text" id="fDepartment" maxlength="150" placeholder="e.g. Computer Science">
+
+                    <label class="field-label" for="fDesignation">Designation</label>
+                    <input type="text" id="fDesignation" maxlength="100" placeholder="e.g. Associate Professor">
+
+                    <label class="field-label" for="fAreas">Research areas</label>
+                    <input type="text" id="fAreas" maxlength="4000" placeholder="e.g. Computer Vision, Medical Imaging">
+
+                    <label class="field-label" for="fExpertise">Expertise</label>
+                    <input type="text" id="fExpertise" maxlength="4000" placeholder="e.g. Deep Learning">
+
+                    <label class="field-label" for="fSkills">Technical skills</label>
+                    <input type="text" id="fSkills" maxlength="4000" placeholder="e.g. Python, TensorFlow">
+
+                    <label class="field-label" for="fPublications">Publications</label>
+                    <textarea id="fPublications" rows="3" maxlength="4000" placeholder="Titles, venues, or abstracts"></textarea>
+
+                    <label class="field-label" for="fProjects">Projects</label>
+                    <textarea id="fProjects" rows="3" maxlength="4000" placeholder="Research projects and experience"></textarea>
+
+                    <label class="field-label" for="fProfileUrl">Profile URL</label>
+                    <input type="url" id="fProfileUrl" maxlength="300" placeholder="https://...">
+
+                    <button type="submit" class="btn" id="saveFacultyBtn">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Profile
+                    </button>
+                    <button type="button" class="btn btn-secondary hidden" id="retryFacultyBtn" onclick="loadFacultyProfile()">
+                        <i class="fa-solid fa-rotate"></i> Retry
+                    </button>
+                    <p class="status-text" id="facultyStatus" role="status"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- RESEARCHER DIRECTORY -->
+        <div id="directoryView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Researcher Directory &amp; Search</div>
+                <input type="text" id="facSearch" placeholder="Search by name, department, research area, or skill..." oninput="onDirectorySearch()">
+                <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <label for="facDepartment" style="color:var(--text-sub);font-size:13px;display:block;margin-bottom:4px;">Department</label>
+                        <select id="facDepartment" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:#FFF;font-size:14px;" onchange="renderDirectory()">
+                            <option value="">All departments</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <label for="facSkill" style="color:var(--text-sub);font-size:13px;display:block;margin-bottom:4px;">Skill</label>
+                        <select id="facSkill" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:#FFF;font-size:14px;" onchange="renderDirectory()">
+                            <option value="">All skills</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="status-text" id="directoryStatus" role="status"></p>
+                <button type="button" class="btn btn-secondary hidden" id="retryDirectoryBtn" onclick="loadDirectory({ force: true })">
+                    <i class="fa-solid fa-rotate"></i> Retry
+                </button>
                 <div id="facultyList"></div>
             </div>
         </div>
 
-    </div>
+        <!-- STUDENT: COLLABORATION REQUESTS -->
+        <div id="requestsView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-paper-plane"></i> My Collaboration Requests</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Requests you have sent from the recommendation cards. Statuses and researcher
+                    replies come from the database.
+                </p>
+                <button type="button" class="btn btn-secondary" id="refreshRequestsBtn" onclick="loadMyRequests()">
+                    <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+                <p class="status-text" id="requestsStatus" role="status"></p>
+                <div id="requestsList"></div>
+            </div>
+        </div>
+
+        <!-- FACULTY: INCOMING REQUESTS -->
+        <div id="inboxView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-inbox"></i> Incoming Collaboration Requests</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Requests are addressed to the researcher directory record linked to your account.
+                </p>
+                <div id="linkPanel"></div>
+                <p class="status-text" id="inboxStatus" role="status"></p>
+                <button type="button" class="btn btn-secondary" id="refreshInboxBtn" onclick="loadFacultyInbox()" style="margin-bottom:12px;">
+                    <i class="fa-solid fa-rotate"></i> Refresh Inbox
+                </button>
+                <div id="inboxList"></div>
+            </div>
+        </div>
+
+    </main>
 
     <script>
-
-const API_BASE = (window.RESEARCHTWIN_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
-const PROFILE_KEY = "researchtwin.studentProfile";
+const api = window.ResearchTwinAPI;
 
 const $ = (id) => document.getElementById(id);
+
+const STUDENT_FIELDS = [
+    ["research_areas", "sAreas"],
+    ["expertise", "sExpertise"],
+    ["skills", "sSkills"],
+    ["courses", "sCourses"],
+    ["projects", "sProjects"],
+    ["publications", "sPublications"],
+    ["academic_details", "sAcademic"]
+];
+
+const FACULTY_FIELDS = [
+    ["department", "fDepartment"],
+    ["designation", "fDesignation"],
+    ["research_areas", "fAreas"],
+    ["expertise", "fExpertise"],
+    ["skills", "fSkills"],
+    ["publications", "fPublications"],
+    ["projects", "fProjects"],
+    ["profile_url", "fProfileUrl"]
+];
+
+const RECOMMENDATION_FIELDS = [
+    "research_areas",
+    "expertise",
+    "skills",
+    "projects",
+    "publications"
+];
+
+const DIRECTORY_TTL_MS = 60000;
+
+const state = {
+    user: null,
+    studentProfile: null,
+    facultyProfile: null,
+    studentLoad: null,
+    facultyLoad: null,
+    studentSaving: false,
+    facultySaving: false,
+    directory: null,
+    directoryLoadedAt: 0,
+    directoryFlight: null,
+    directorySeq: 0,
+    matchFlight: null,
+    matchRequestSeq: 0,
+    refreshRecommendationsNeeded: false,
+    inboxFlight: null,
+    decisionBusy: false,
+    authTransition: null,
+    epoch: 0
+};
 
 function escapeHTML(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -273,80 +943,571 @@ function escapeHTML(value) {
     })[char]);
 }
 
-function getStudentProfile() {
-    return {
-        research_areas: $("sAreas").value.trim(),
-        expertise: "Machine Learning",
-        skills: $("sSkills").value.trim(),
-        projects: $("sProjects").value.trim(),
-        publications: "",
-        top_k: 5
-    };
+function setBusy(buttonId, busy) {
+    const button = $(buttonId);
+    if (button) button.disabled = Boolean(busy);
 }
 
-async function apiRequest(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: {
-            ...(options.body ? { "Content-Type": "application/json" } : {}),
-            ...options.headers
-        }
+function setStatus(id, message, tone) {
+    const element = $(id);
+    if (!element) return;
+    element.textContent = message || "";
+    element.classList.remove("error", "success");
+    if (tone) element.classList.add(tone);
+}
+
+function authNotice(message, tone = "error") {
+    const element = $("authNotice");
+    if (!element) return;
+    element.textContent = message || "";
+    element.classList.toggle("error", Boolean(message) && tone === "error");
+}
+
+function setProfileBusy(role, busy) {
+    const fields = role === "student" ? STUDENT_FIELDS : FACULTY_FIELDS;
+    fields.forEach(([, id]) => setBusy(id, busy));
+    setBusy(role === "student" ? "saveStudentBtn" : "saveFacultyBtn", busy);
+}
+
+// A single auth transition owns the controls until its API call settles.
+// Do not release this lock on reset: an old logout must not clear a new login.
+function beginAuthTransition() {
+    if (state.authTransition) return null;
+    const transition = { epoch: state.epoch };
+    state.authTransition = transition;
+    ["loginBtn", "registerBtn", "logoutBtn", "tabLogin", "tabRegister"].forEach(id => setBusy(id, true));
+    return transition;
+}
+
+function finishAuthTransition(transition) {
+    if (state.authTransition !== transition) return;
+    state.authTransition = null;
+    ["loginBtn", "registerBtn", "logoutBtn", "tabLogin", "tabRegister"].forEach(id => setBusy(id, false));
+}
+
+function humanizeError(error) {
+    if (!error) return "Unexpected error.";
+    if (error.kind === "network") {
+        return "Could not reach the ResearchTwin API. Check your connection and try again.";
+    }
+    if (error.kind === "timeout") {
+        return error.message || "The request timed out.";
+    }
+    return String(error.message || "Unexpected error.").replace(/^Value error,\s*/i, "");
+}
+
+function isEmail(value) {
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+}
+
+function renderCompletion(pillId, fillId, value) {
+    const numeric = Number(value);
+    const percent = Number.isFinite(numeric)
+        ? Math.max(0, Math.min(100, numeric))
+        : 0;
+    const pill = $(pillId);
+    if (pill) pill.textContent = `Profile ${percent}%`;
+    const fill = $(fillId);
+    if (fill) fill.style.width = `${percent}%`;
+}
+
+function resetAppState() {
+    state.epoch += 1;
+    state.matchRequestSeq += 1;
+    state.user = null;
+    state.studentProfile = null;
+    state.facultyProfile = null;
+    state.studentLoad = null;
+    state.facultyLoad = null;
+    state.studentSaving = false;
+    state.facultySaving = false;
+    state.directory = null;
+    state.directoryLoadedAt = 0;
+    state.directoryFlight = null;
+    state.directorySeq += 1;
+    state.matchFlight = null;
+    state.refreshRecommendationsNeeded = false;
+    state.inboxFlight = null;
+    state.decisionBusy = false;
+    setProfileBusy("student", true);
+    setProfileBusy("faculty", true);
+    ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn"].forEach(id => setBusy(id, false));
+    ["retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn"].forEach(id => { const el = $(id); if (el) el.classList.add("hidden"); });
+    const recommendationCount = $("recommendationCount");
+    if (recommendationCount) recommendationCount.value = "5";
+    const facDepartment = $("facDepartment");
+    if (facDepartment) {
+        facDepartment.innerHTML = '<option value="">All departments</option>';
+        facDepartment.value = "";
+    }
+    const facSkill = $("facSkill");
+    if (facSkill) facSkill.value = "";
+    STUDENT_FIELDS.forEach(([, id]) => {
+        const element = $(id);
+        if (element) element.value = "";
+    });
+    FACULTY_FIELDS.forEach(([, id]) => {
+        const element = $(id);
+        if (element) element.value = "";
     });
 
-    if (!response.ok) {
-        const detail = await response.text();
-        throw new Error(`API ${response.status}: ${detail}`);
+    ["sEmail", "fEmail"].forEach((id) => {
+        const element = $(id);
+        if (element) element.value = "";
+    });
+
+    renderCompletion("studentCompletion", "studentCompletionFill", 0);
+    renderCompletion("facultyCompletion", "facultyCompletionFill", 0);
+    renderCompletion("matchCompletion", "matchCompletionFill", 0);
+
+    ["studentStatus", "facultyStatus", "matchStatus", "directoryStatus"].forEach((id) => {
+        setStatus(id, "");
+    });
+
+    const matches = $("matchesContainer");
+    if (matches) matches.innerHTML = "";
+    const list = $("facultyList");
+    if (list) list.innerHTML = "";
+    const search = $("facSearch");
+    if (search) search.value = "";
+
+    ["requestsList", "inboxList", "linkPanel"].forEach((id) => {
+        const element = $(id);
+        if (element) element.innerHTML = "";
+    });
+    setStatus("requestsStatus", "");
+    setStatus("inboxStatus", "");
+}
+
+function showAuth(message, tone = "error") {
+    $("authShell").classList.remove("hidden");
+    $("appSidebar").classList.add("hidden");
+    $("appMain").classList.add("hidden");
+    authNotice(message || "", tone);
+    $("loginPassword").value = "";
+    $("regPassword").value = "";
+    const email = $("loginEmail");
+    if (email) email.focus();
+}
+
+function showAuthMode(mode) {
+    if (state.authTransition) return;
+    const login = mode !== "register";
+    $("loginForm").classList.toggle("hidden", !login);
+    $("registerForm").classList.toggle("hidden", login);
+    $("tabLogin").classList.toggle("active", login);
+    $("tabRegister").classList.toggle("active", !login);
+    $("tabLogin").setAttribute("aria-selected", String(login));
+    $("tabRegister").setAttribute("aria-selected", String(!login));
+    $("loginError").textContent = "";
+    $("registerError").textContent = "";
+    authNotice("");
+}
+
+function buildNav(role) {
+    const items = role === "faculty"
+        ? [
+            ["facultyProfileView", "fa-id-badge", "Faculty Profile"],
+            ["directoryView", "fa-graduation-cap", "Researcher Directory"],
+            ["inboxView", "fa-inbox", "Collaboration Requests"]
+        ]
+        : [
+            ["matchView", "fa-wand-magic-sparkles", "ML Recommendations"],
+            ["studentView", "fa-user-gear", "Student Profile"],
+            ["directoryView", "fa-graduation-cap", "Researcher Directory"],
+            ["requestsView", "fa-paper-plane", "My Requests"]
+        ];
+
+    $("navMenu").innerHTML = items.map(([viewId, icon, label]) =>
+        `<li><a href="#" data-view="${viewId}" onclick="switchView('${viewId}'); return false;">` +
+        `<i class="fa-solid ${icon}"></i> ${label}</a></li>`
+    ).join("");
+}
+
+function switchView(viewId) {
+    const view = $(viewId);
+    if (!view) return;
+
+    document.querySelectorAll(".view-section")
+        .forEach(element => element.classList.remove("active"));
+    document.querySelectorAll(".nav-menu a")
+        .forEach(element => element.classList.remove("active"));
+
+    view.classList.add("active");
+    const link = document.querySelector(`.nav-menu a[data-view="${viewId}"]`);
+    if (link) link.classList.add("active");
+
+    if (viewId === "studentView") loadStudentProfile();
+    if (viewId === "facultyProfileView") loadProfile("faculty");
+    if (viewId === "directoryView") loadDirectory();
+    if (viewId === "requestsView") loadMyRequests();
+    if (viewId === "inboxView") loadFacultyInbox();
+}
+
+function enterApp(user) {
+    if (!user || !user.role) {
+        throw new Error("The API did not return an authenticated user.");
     }
 
-    return response.json();
+    resetAppState();
+    state.user = user;
+
+    $("authShell").classList.add("hidden");
+    $("appSidebar").classList.remove("hidden");
+    $("appMain").classList.remove("hidden");
+
+    const roleLabel = user.role === "faculty" ? "Faculty / Researcher" : "Student";
+    $("userChip").innerHTML =
+        `<b>${escapeHTML(user.full_name)}</b><br>` +
+        `${escapeHTML(roleLabel)} &middot; ${escapeHTML(user.email)}`;
+
+    buildNav(user.role);
+
+    if (user.role === "faculty") {
+        switchView("facultyProfileView");
+    } else {
+        switchView("matchView");
+        // Profile loading belongs to this session's recommendation flight.
+        // Authentication is complete; a slow model must not hold auth controls.
+        refreshRecommendations();
+    }
 }
 
-function switchTab(viewId) {
-    document.querySelectorAll(".view-section")
-        .forEach(el => el.classList.remove("active"));
-
-    document.querySelectorAll(".nav-menu a")
-        .forEach(el => el.classList.remove("active"));
-
-    $(viewId).classList.add("active");
-
-    const navIds = {
-        matchView: "navMatches",
-        studentView: "navStudent",
-        facultyView: "navFaculty"
-    };
-
-    $(navIds[viewId])?.classList.add("active");
-
-    if (viewId === "matchView") fetchMatches();
-    if (viewId === "studentView") loadStudentProfile();
-    if (viewId === "facultyView") searchFaculty();
+function handleUnauthorized(detail) {
+    resetAppState();
+    const reason = detail && detail !== "Not authenticated"
+        ? `Your session has ended (${detail}). Sign in again.`
+        : "Your session has ended. Sign in again.";
+    showAuth(reason);
 }
 
-async function fetchMatches() {
-    const container = $("matchesContainer");
-    container.textContent = "Running researcher matching…";
+async function handleLogin(event) {
+    event.preventDefault();
+    if (state.authTransition || state.user) return;
+    setStatus("loginError", "");
+
+    const email = $("loginEmail").value.trim();
+    const password = $("loginPassword").value;
+
+    if (!email || !isEmail(email)) {
+        setStatus("loginError", "Enter a valid email address.");
+        return;
+    }
+    if (!password) {
+        setStatus("loginError", "Enter your password.");
+        return;
+    }
+
+    const transition = beginAuthTransition();
+    setStatus("loginError", "Signing in…");
 
     try {
-        const profile = getStudentProfile();
+        const data = await api.login({ email, password });
+        if (transition.epoch !== state.epoch) return;
+        $("loginPassword").value = "";
+        enterApp(data.user);
+    } catch (error) {
+        if (transition.epoch !== state.epoch) return;
+        setStatus("loginError", humanizeError(error), "error");
+        $("loginPassword").focus();
+    } finally {
+        finishAuthTransition(transition);
+    }
+}
 
-        if (!profile.research_areas && !profile.skills &&
-            !profile.projects && !profile.publications) {
-            container.innerHTML =
-                '<p style="color:#A0A5B5">Add your research interests, skills or projects in Student Profile first.</p>';
-            return;
+async function handleRegister(event) {
+    event.preventDefault();
+    if (state.authTransition || state.user) return;
+    setStatus("registerError", "");
+
+    const fullName = $("regName").value.trim();
+    const email = $("regEmail").value.trim();
+    const password = $("regPassword").value;
+    const role = $("regRole").value;
+
+    if (!fullName) {
+        setStatus("registerError", "Enter your full name.");
+        return;
+    }
+    if (!email || !isEmail(email)) {
+        setStatus("registerError", "Enter a valid email address.");
+        return;
+    }
+    if (password.length < 8) {
+        setStatus("registerError", "Password must be at least 8 characters.");
+        return;
+    }
+
+    const transition = beginAuthTransition();
+    setStatus("registerError", "Creating your account…");
+
+    try {
+        const data = await api.register({
+            full_name: fullName,
+            email,
+            password,
+            role
+        });
+        if (transition.epoch !== state.epoch) return;
+        $("regPassword").value = "";
+        enterApp(data.user);
+    } catch (error) {
+        if (transition.epoch !== state.epoch) return;
+        setStatus("registerError", humanizeError(error), "error");
+    } finally {
+        finishAuthTransition(transition);
+    }
+}
+
+async function handleLogout() {
+    if (state.authTransition) return;
+    resetAppState();
+    const transition = beginAuthTransition();
+    showAuth("Signing out…", "");
+
+    try {
+        await api.logout();
+        if (transition.epoch !== state.epoch) return;
+        showAuth("You have been signed out.", "");
+    } catch {
+        if (transition.epoch !== state.epoch) return;
+        showAuth("Signed out on this device, but the server could not be reached to revoke the session. It will expire automatically.");
+    } finally {
+        finishAuthTransition(transition);
+    }
+}
+
+function hasProfileContent(profile) {
+    return RECOMMENDATION_FIELDS.some((field) =>
+        Boolean(String(profile[field] || "").trim())
+    );
+}
+
+function showProfileGuidance(message) {
+    const container = $("matchesContainer");
+    container.innerHTML = "";
+
+    const paragraph = document.createElement("p");
+    paragraph.style.color = "#A0A5B5";
+    paragraph.textContent = message ||
+        "Save your student profile before requesting recommendations.";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.style.marginTop = "12px";
+    button.textContent = "Open student profile";
+    button.onclick = () => switchView("studentView");
+
+    container.append(paragraph, button);
+    setStatus("matchStatus", "");
+}
+
+function loadStudentProfile() {
+    return loadProfile("student");
+}
+
+function loadFacultyProfile() {
+    return loadProfile("faculty");
+}
+
+function loadProfile(role) {
+    if (state.user?.role !== role) return Promise.resolve(null);
+    const profileKey = `${role}Profile`;
+    const loadKey = `${role}Load`;
+    if (state[profileKey]) return Promise.resolve(state[profileKey]);
+    if (state[loadKey]) return state[loadKey].promise;
+
+    const student = role === "student";
+    const fields = student ? STUDENT_FIELDS : FACULTY_FIELDS;
+    const retryId = student ? "retryStudentBtn" : "retryFacultyBtn";
+    const epoch = state.epoch;
+    const flight = {};
+    state[loadKey] = flight;
+    setProfileBusy(role, true);
+    setBusy(retryId, true);
+    $(retryId).classList.add("hidden");
+    $(student ? "sEmail" : "fEmail").value = state.user.email;
+    setStatus(`${role}Status`, "Loading your saved profile…");
+
+    flight.promise = (async () => {
+        try {
+            const profile = await (student ? api.getStudentProfile() : api.getFacultyProfile());
+            if (epoch !== state.epoch) return null;
+            if (!profile || typeof profile !== "object") throw new Error("The API returned an unexpected profile response.");
+            state[profileKey] = profile;
+            fields.forEach(([field, id]) => { $(id).value = profile[field] || ""; });
+            renderCompletion(`${role}Completion`, `${role}CompletionFill`, profile.profile_completion);
+            if (student) renderCompletion("matchCompletion", "matchCompletionFill", profile.profile_completion);
+            setStatus(
+                `${role}Status`,
+                profile.updated_at
+                    ? `Saved ${new Date(profile.updated_at * 1000).toLocaleString()}`
+                    : "Profile loaded. Fill in any fields and save.",
+                profile.updated_at ? "success" : ""
+            );
+            return profile;
+        } catch (error) {
+            if (epoch !== state.epoch) return null;
+            if (error.kind !== "unauthorized") {
+                setStatus(`${role}Status`, `Could not load your profile: ${humanizeError(error)} Retry before editing.`, "error");
+                $(retryId).classList.remove("hidden");
+            }
+            return null;
+        } finally {
+            if (epoch === state.epoch && state[loadKey] === flight) {
+                state[loadKey] = null;
+                setBusy(retryId, false);
+                setProfileBusy(role, !state[profileKey]);
+            }
         }
+    })();
+    return flight.promise;
+}
 
-        const data = await apiRequest("/recommendations/researchers", {
-            method: "POST",
-            body: JSON.stringify(profile)
+async function handleSaveStudentProfile(event) {
+    event.preventDefault();
+    if (state.user?.role !== "student" || !state.studentProfile || state.studentSaving) return;
+    const epoch = state.epoch;
+    const payload = {};
+    STUDENT_FIELDS.forEach(([field, id]) => {
+        payload[field] = ($(id).value || "").trim();
+    });
+
+    state.studentSaving = true;
+    setProfileBusy("student", true);
+    setStatus("studentStatus", "Saving profile…");
+    let refresh = false;
+
+    try {
+        const saved = await api.saveStudentProfile(payload);
+        if (epoch !== state.epoch) return;
+        state.studentProfile = saved;
+
+        STUDENT_FIELDS.forEach(([field, id]) => {
+            const element = $(id);
+            if (element) element.value = saved[field] || "";
         });
 
-        renderMatches(data.recommendations || []);
+        renderCompletion("studentCompletion", "studentCompletionFill", saved.profile_completion);
+        renderCompletion("matchCompletion", "matchCompletionFill", saved.profile_completion);
+        setStatus(
+            "studentStatus",
+            "Profile saved to the database. Recommendations now use these details.",
+            "success"
+        );
+        refresh = true;
     } catch (error) {
-        container.innerHTML =
-            `<p style="color:#FF8878">Could not load recommendations: ${escapeHTML(error.message)}. Check that the backend is running and CORS is configured.</p>`;
+        if (epoch !== state.epoch) return;
+        if (error.kind !== "unauthorized") {
+            setStatus("studentStatus", `Could not save your profile: ${humanizeError(error)}`, "error");
+        }
+    } finally {
+        if (epoch === state.epoch) {
+            state.studentSaving = false;
+            setProfileBusy("student", false);
+        }
     }
+    // Saving is finished independently of model latency. Queue a newer result
+    // if an older computation is still running instead of accepting its output.
+    if (refresh && epoch === state.epoch) {
+        if (state.matchFlight) {
+            state.refreshRecommendationsNeeded = true;
+        } else {
+            refreshRecommendations({ invalidate: true });
+        }
+    }
+}
+
+async function refreshRecommendations({ quiet = false, invalidate = false } = {}) {
+    if (state.matchFlight && !invalidate) return state.matchFlight.promise;
+
+    setBusy("refreshMatchesBtn", true);
+    const container = $("matchesContainer");
+    const seq = ++state.matchRequestSeq;
+    const epoch = state.epoch;
+
+    if (invalidate && state.matchFlight) {
+        state.matchFlight = null;
+    }
+
+    container.textContent = "Running researcher matching…";
+    if (!quiet) setStatus("matchStatus", "Computing recommendations from your saved profile…");
+
+    const flight = {};
+    state.matchFlight = flight;
+
+    flight.promise = (async () => {
+        try {
+            let profile = state.studentProfile;
+            if (!profile) {
+                profile = await loadStudentProfile({ quiet: true });
+            }
+
+            if (epoch !== state.epoch) return;
+
+            if (!profile) {
+                container.textContent = "";
+                setStatus("matchStatus", "Could not load your profile. Please retry or refresh the page.", "error");
+                return;
+            }
+
+            if (!profile.updated_at) {
+                showProfileGuidance();
+                return;
+            }
+
+            if (!hasProfileContent(profile)) {
+                showProfileGuidance(
+                    "Your saved profile has no research interests, skills, or projects yet. " +
+                    "Add some details so the model has something to match."
+                );
+                return;
+            }
+
+            const topK = Number($("recommendationCount")?.value || 5);
+            const data = await api.getRecommendations(topK);
+            if (seq !== state.matchRequestSeq || epoch !== state.epoch) return;
+
+            renderMatches(Array.isArray(data.recommendations) ? data.recommendations : []);
+            renderCompletion("matchCompletion", "matchCompletionFill", data.profile_completion);
+
+            const count = Array.isArray(data.recommendations) ? data.recommendations.length : 0;
+            setStatus(
+                "matchStatus",
+                count ? `Showing ${count} researcher matches.` : "No researcher matches were returned.",
+                count ? "success" : ""
+            );
+        } catch (error) {
+            if (seq !== state.matchRequestSeq || epoch !== state.epoch) return;
+
+            container.textContent = "";
+
+            if (error.kind === "unauthorized") return;
+
+            if (error.status === 400) {
+                showProfileGuidance();
+                return;
+            }
+
+            setStatus(
+                "matchStatus",
+                `Could not load recommendations: ${humanizeError(error)}`,
+                "error"
+            );
+        } finally {
+            if (epoch === state.epoch && state.matchFlight === flight) {
+                state.matchFlight = null;
+                setBusy("refreshMatchesBtn", false);
+                if (state.refreshRecommendationsNeeded) {
+                    state.refreshRecommendationsNeeded = false;
+                    refreshRecommendations();
+                }
+            }
+        }
+    })();
+
+    return flight.promise;
 }
 
 function renderMatches(recommendations) {
@@ -354,7 +1515,8 @@ function renderMatches(recommendations) {
     container.innerHTML = "";
 
     if (!recommendations.length) {
-        container.textContent = "No researchers found. Check that researcher records are available.";
+        container.textContent =
+            "No researchers found. Check that researcher records are available.";
         return;
     }
 
@@ -396,6 +1558,23 @@ function renderMatches(recommendations) {
         const card = document.createElement("div");
         card.className = "match-card";
 
+        const researcherId = Number(researcher.researcher_id);
+        const actionsHTML = Number.isInteger(researcherId) && researcherId > 0
+            ? `
+            <div class="card-actions">
+                <button type="button" class="btn btn-secondary btn-small"
+                        onclick="toggleRoadmap(${researcherId})">
+                    <i class="fa-solid fa-route"></i> Readiness roadmap
+                </button>
+                <button type="button" class="btn btn-secondary btn-small"
+                        onclick="toggleRequestForm(${researcherId})">
+                    <i class="fa-solid fa-paper-plane"></i> Request collaboration
+                </button>
+                <div class="roadmap-slot" id="roadmap-${researcherId}"></div>
+                <div class="roadmap-slot" id="request-${researcherId}"></div>
+            </div>`
+            : "";
+
         card.innerHTML = `
             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px">
                 <div>
@@ -435,94 +1614,788 @@ function renderMatches(recommendations) {
                     They are not probabilities of successful collaboration.
                 </p>
             </div>
+            ${actionsHTML}
         `;
 
         container.appendChild(card);
     });
 }
 
-function loadStudentProfile() {
+async function handleSaveFacultyProfile(event) {
+    event.preventDefault();
+    if (state.user?.role !== "faculty" || !state.facultyProfile || state.facultySaving) return;
+    const epoch = state.epoch;
+    const payload = {};
+    FACULTY_FIELDS.forEach(([field, id]) => {
+        payload[field] = ($(id).value || "").trim();
+    });
+
+    state.facultySaving = true;
+    setProfileBusy("faculty", true);
+    setStatus("facultyStatus", "Saving profile…");
+
     try {
-        const saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
-        $("sAreas").value = saved.research_areas || "";
-        $("sSkills").value = saved.skills || "";
-        $("sProjects").value = saved.projects || "";
-    } catch {
-        console.warn("Could not load the locally saved student profile.");
+        const saved = await api.saveFacultyProfile(payload);
+        if (epoch !== state.epoch) return;
+        state.facultyProfile = saved;
+
+        FACULTY_FIELDS.forEach(([field, id]) => {
+            const element = $(id);
+            if (element) element.value = saved[field] || "";
+        });
+
+        renderCompletion("facultyCompletion", "facultyCompletionFill", saved.profile_completion);
+        setStatus(
+            "facultyStatus",
+            "Faculty profile saved to the database.",
+            "success"
+        );
+        state.directory = null;
+        state.directoryLoadedAt = 0;
+        state.directorySeq += 1;
+    } catch (error) {
+        if (epoch !== state.epoch) return;
+        if (error.kind !== "unauthorized") {
+            setStatus(
+                "facultyStatus",
+                `Could not save your faculty profile: ${humanizeError(error)}`,
+                "error"
+            );
+        }
+    } finally {
+        if (epoch === state.epoch) {
+            state.facultySaving = false;
+            setProfileBusy("faculty", false);
+        }
     }
 }
 
-function saveStudentProfile(event) {
-    event.preventDefault();
-
-    const profile = getStudentProfile();
-
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-
-    alert("Profile saved in this browser. It has not been saved to the backend database.");
-    switchTab("matchView");
+function safeHttpUrl(value) {
+    try {
+        const url = new URL(String(value));
+        return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+    } catch {
+        return "";
+    }
 }
 
-async function searchFaculty() {
+function renderDirectory() {
     const list = $("facultyList");
     const query = ($("facSearch").value || "").trim().toLowerCase();
+    const deptFilter = $("facDepartment")?.value || "";
+    const skillFilter = $("facSkill")?.value || "";
+    const directory = Array.isArray(state.directory) ? state.directory : [];
 
-    list.textContent = "Loading faculty directory…";
+    // Populate filters on first render
+    const deptSelect = $("facDepartment");
+    const skillSelect = $("facSkill");
+    if (deptSelect && directory.length) {
+        const currentOptions = deptSelect.children.length;
+        if (currentOptions <= 1) {
+            const departments = [...new Set(directory.map(p => p.department).filter(Boolean))].sort();
+            const optionsHTML = '<option value="">All departments</option>' + departments.map(dept => `<option value="${escapeHTML(dept)}">${escapeHTML(dept)}</option>`).join("");
+            deptSelect.innerHTML = optionsHTML;
+        }
+    }
+    if (skillSelect && directory.length) {
+        const currentOptions = skillSelect.children.length;
+        if (currentOptions <= 1) {
+            const skills = new Set();
+            directory.forEach(p => {
+                (p.skills || "").split(",").map(s => s.trim()).filter(Boolean).forEach(s => skills.add(s));
+            });
+            const optionsHTML = '<option value="">All skills</option>' + [...skills].sort().map(skill => `<option value="${escapeHTML(skill)}">${escapeHTML(skill)}</option>`).join("");
+            skillSelect.innerHTML = optionsHTML;
+        }
+    }
+
+    const filtered = directory.filter(person => {
+        const searchable = [
+            person.name,
+            person.department,
+            person.designation,
+            person.research_areas,
+            person.expertise,
+            person.skills,
+            person.publications,
+            person.projects,
+            person.experience
+        ].join(" ").toLowerCase();
+
+        const matchesQuery = !query || searchable.includes(query);
+        const matchesDept = !deptFilter || person.department === deptFilter;
+        const matchesSkill = !skillFilter || (person.skills || "").toLowerCase().includes(skillFilter.toLowerCase());
+
+        return matchesQuery && matchesDept && matchesSkill;
+    });
+
+    list.innerHTML = "";
+
+    if (!directory.length) {
+        setStatus("directoryStatus", "No researcher records are available.");
+        return;
+    }
+
+    if (!filtered.length) {
+        setStatus("directoryStatus", `No researchers match the current filters.`);
+        return;
+    }
+
+    setStatus(
+        "directoryStatus",
+        (query || deptFilter || skillFilter)
+            ? `Showing ${filtered.length} of ${directory.length} researchers.`
+            : `Showing all ${directory.length} researchers.`
+    );
+
+    filtered.forEach(person => {
+        const item = document.createElement("div");
+        item.style.cssText = "padding:15px 0;border-bottom:1px solid var(--border)";
+
+        const profileUrl = safeHttpUrl(person.profile_url);
+        const profileLink = profileUrl
+            ? `<a href="${escapeHTML(profileUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue);font-size:12px;margin-left:8px;">Profile</a>`
+            : "";
+
+        item.innerHTML = `            <b style="color:#FFF">${escapeHTML(person.name)}</b>
+            <span style="color:var(--text-sub);font-size:12px">
+                (${escapeHTML(person.department || "Department not specified")}${person.designation ? `, ${escapeHTML(person.designation)}` : ""})
+            </span>
+            ${profileLink}
+            <p style="color:var(--text-sub);font-size:13px;margin-top:6px">
+                ${escapeHTML(person.research_areas || person.expertise || "Research interests not provided")}
+            </p>
+            <p style="color:var(--text-sub);font-size:12px;margin-top:4px">
+                Skills: ${escapeHTML(person.skills || "Not listed")}
+            </p>
+            <details style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border-radius:6px;">
+                <summary style="cursor:pointer;color:var(--primary);font-size:12px;font-weight:600;">Show details</summary>
+                <div style="margin-top:8px;">
+                    ${person.expertise ? `<p style="color:var(--text-sub);font-size:12px;margin-bottom:6px;"><b>Expertise:</b> ${escapeHTML(person.expertise)}</p>` : ""}
+                    ${person.projects ? `<p style="color:var(--text-sub);font-size:12px;margin-bottom:6px;"><b>Projects:</b> ${escapeHTML(person.projects)}</p>` : ""}
+                    ${person.publications ? `<p style="color:var(--text-sub);font-size:12px;margin-bottom:6px;"><b>Publications:</b> ${escapeHTML(person.publications)}</p>` : ""}
+                    ${person.courses ? `<p style="color:var(--text-sub);font-size:12px;margin-bottom:6px;"><b>Courses:</b> ${escapeHTML(person.courses)}</p>` : ""}
+                    ${person.academic_details ? `<p style="color:var(--text-sub);font-size:12px;margin-bottom:6px;"><b>Academic Details:</b> ${escapeHTML(person.academic_details)}</p>` : ""}
+                </div>
+            </details>
+        `;
+
+        list.appendChild(item);
+    });
+}
+
+async function loadDirectory({ force = false } = {}) {
+    const now = Date.now();
+
+    if (!force && state.directory && now - state.directoryLoadedAt < DIRECTORY_TTL_MS) {
+        renderDirectory();
+        return;
+    }
+
+    if (state.directoryFlight) return state.directoryFlight.promise;
+
+    setStatus("directoryStatus", "Loading researcher directory…");
+
+    const epoch = state.epoch;
+    const seq = ++state.directorySeq;
+    const flight = {};
+    state.directoryFlight = flight;
+
+    const promise = api.getResearchers().then(researchers => {
+        if (epoch !== state.epoch || seq !== state.directorySeq) return;
+        if (!Array.isArray(researchers)) {
+            throw new Error("The API returned an unexpected directory response.");
+        }
+        state.directory = researchers;
+        state.directoryLoadedAt = Date.now();
+        renderDirectory();
+    }).catch(error => {
+        if (epoch !== state.epoch || seq !== state.directorySeq) return;
+        $("facultyList").innerHTML = "";
+        setStatus(
+            "directoryStatus",
+            `Directory search failed: ${humanizeError(error)}`,
+            "error"
+        );
+    }).finally(() => {
+        if (state.directoryFlight === flight) {
+            state.directoryFlight = null;
+        }
+    });
+
+    flight.promise = promise;
+    return promise;
+}
+
+function onDirectorySearch() {
+    if (!state.directory) {
+        loadDirectory();
+        return;
+    }
+    renderDirectory();
+}
+
+const PRIORITY_CLASS = { high: "priority-high", medium: "priority-medium", low: "priority-low" };
+const STATUS_CLASS = { pending: "status-pending", accepted: "status-accepted", rejected: "status-rejected" };
+const roadmapRequestVersions = new WeakMap();
+const pendingMilestoneUpdates = new Set();
+
+function roadmapVersion(slot) {
+    const version = (roadmapRequestVersions.get(slot) || 0) + 1;
+    roadmapRequestVersions.set(slot, version);
+    return version;
+}
+
+function isCurrentRoadmapSlot(researcherId, slot, epoch, version) {
+    return epoch === state.epoch &&
+        $(`roadmap-${researcherId}`) === slot &&
+        slot.dataset.open === "1" &&
+        roadmapRequestVersions.get(slot) === version;
+}
+
+function milestoneUpdateKey(researcherId, epoch = state.epoch) {
+    return `${epoch}:${researcherId}`;
+}
+
+function errorBlockHTML(message, retryAttribute) {
+    return `<p class="form-error" role="alert">${escapeHTML(message)}</p>` +
+        `<button type="button" class="btn btn-secondary btn-small" ${retryAttribute}>Try again</button>`;
+}
+
+function progressHTML(progress) {
+    if (!progress || !progress.total_milestones) return "";
+
+    return `
+        <div class="completion-row">
+            <span class="completion-pill">Roadmap ${progress.completion_percentage}%</span>
+            <div class="completion-track">
+                <div class="completion-fill" style="width:${Math.max(0, Math.min(100, progress.completion_percentage))}%"></div>
+            </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-sub)">
+            ${progress.completed_milestones} of ${progress.total_milestones} milestones marked complete.
+            Progress is stored with your account, so it is available after a refresh or on another device.
+        </p>`;
+}
+
+function renderRoadmap(slot, roadmap, researcherId) {
+    slot.dataset.open = "1";
+    slot.innerHTML = "";
+
+    const heading = document.createElement("p");
+    heading.style.cssText = "font-size:12px;color:var(--text-sub);margin-bottom:6px";
+    heading.innerHTML = `Roadmap for <b style="color:#FFF">${escapeHTML(roadmap.researcher?.name || "this researcher")}</b>` +
+        (roadmap.researcher?.department ? ` &middot; ${escapeHTML(roadmap.researcher.department)}` : "");
+    slot.appendChild(heading);
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+        ${progressHTML(roadmap.progress)}
+        <p style="font-size:13px;color:var(--text-sub)">${escapeHTML(roadmap.message || "")}</p>
+        <div class="roadmap-label">Skills you already share</div>
+        ${(roadmap.matched_skills || []).map(skill =>
+            `<span class="tag tag-match">✓ ${escapeHTML(skill)}</span>`).join("") ||
+            '<span style="color:var(--text-sub);font-size:12px">None yet</span>'}
+    `;
+    slot.appendChild(wrap);
+
+    if (!roadmap.student_skills_provided) {
+        const hint = document.createElement("button");
+        hint.type = "button";
+        hint.className = "btn btn-secondary btn-small";
+        hint.textContent = "Add your skills to your profile";
+        hint.onclick = () => switchView("studentView");
+        slot.appendChild(hint);
+        return;
+    }
+
+    const items = Array.isArray(roadmap.skill_gaps) ? roadmap.skill_gaps : [];
+
+    if (!items.length) {
+        const clear = document.createElement("p");
+        clear.style.cssText = "font-size:13px;color:var(--accent-green);margin-top:10px";
+        if (roadmap.researcher_skill_count === 0) {
+            clear.textContent = "This researcher has not listed any skills yet. Unable to assess overlap.";
+        } else {
+            clear.textContent = "No skill gaps against this researcher. Your saved skills cover their list.";
+        }
+        slot.appendChild(clear);
+        return;
+    }
+
+    items.forEach(item => {
+        const box = document.createElement("div");
+        box.className = "roadmap-item";
+        const priorityClass = PRIORITY_CLASS[String(item.priority || "").toLowerCase()] || "priority-medium";
+
+        box.innerHTML = `
+            <h4>${escapeHTML(item.skill)}
+                <span class="priority-pill ${priorityClass}">${escapeHTML(item.priority || "medium")}</span>
+            </h4>
+            <p style="font-size:12px;color:var(--text-sub)">${escapeHTML(item.reason || "")}</p>
+            <div class="roadmap-label">Milestones</div>
+            <div class="milestone-list"></div>
+            <div class="roadmap-label">Suggested mini-project</div>
+            <p style="font-size:13px">${escapeHTML(item.project || "Not specified")}</p>
+            <div class="roadmap-label">Completion criteria</div>
+            <ul style="margin:4px 0 0;padding-left:18px">
+                ${(item.completion_criteria || []).map(criterion =>
+                    `<li style="font-size:12px;color:var(--text-sub);margin:3px 0">${escapeHTML(criterion)}</li>`).join("")}
+            </ul>`;
+
+        const milestoneHost = box.querySelector(".milestone-list");
+
+        (item.milestones || []).forEach(milestone => {
+            const label = document.createElement("label");
+            label.className = "milestone-row" + (milestone.completed ? " done" : "");
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = Boolean(milestone.completed);
+            checkbox.disabled = pendingMilestoneUpdates.has(
+                milestoneUpdateKey(researcherId)
+            );
+            checkbox.dataset.skill = item.skill;
+            checkbox.dataset.index = String(milestone.index);
+
+            const text = document.createElement("span");
+            text.textContent = milestone.text;
+
+            label.append(checkbox, text);
+            milestoneHost.appendChild(label);
+
+            checkbox.addEventListener("change", () =>
+                updateMilestone(researcherId, slot, checkbox));
+        });
+
+        slot.appendChild(box);
+    });
+}
+
+async function updateMilestone(researcherId, slot, checkbox) {
+    const epoch = state.epoch;
+    const updateKey = milestoneUpdateKey(researcherId, epoch);
+    if (
+        pendingMilestoneUpdates.has(updateKey) ||
+        $(`roadmap-${researcherId}`) !== slot ||
+        slot.dataset.open !== "1"
+    ) return;
+
+    const requestedValue = Boolean(checkbox.checked);
+    const previousValue = !requestedValue;
+    pendingMilestoneUpdates.add(updateKey);
+    const version = roadmapVersion(slot); // Invalidate any earlier GET.
+    slot.querySelectorAll('input[type="checkbox"]').forEach(control => {
+        control.disabled = true;
+    });
 
     try {
-        const researchers = await apiRequest("/researchers/");
-        const filtered = (Array.isArray(researchers) ? researchers : [])
-            .filter(person => {
-                const searchable = [
-                    person.name,
-                    person.department,
-                    person.designation,
-                    person.research_areas,
-                    person.expertise,
-                    person.skills,
-                    person.publications,
-                    person.projects
-                ].join(" ").toLowerCase();
+        const roadmap = await api.setRoadmapMilestone(
+            researcherId,
+            checkbox.dataset.skill,
+            Number(checkbox.dataset.index),
+            requestedValue
+        );
+        if (epoch !== state.epoch) return;
 
-                return searchable.includes(query);
-            });
+        const currentSlot = $(`roadmap-${researcherId}`);
+        if (currentSlot === slot && slot.dataset.open === "1") {
+            // A close/reopen may have started a newer GET. The successful
+            // mutation response is newer, so invalidate that GET before paint.
+            roadmapVersion(slot);
+            renderRoadmap(slot, roadmap, researcherId);
+        }
+    } catch (error) {
+        if (epoch !== state.epoch) return;
+        const currentSlot = $(`roadmap-${researcherId}`);
+        if (currentSlot === slot && slot.dataset.open === "1") {
+            // Restore only the checkbox from this view; a reopened view has
+            // fresh server state and must not be changed by an older request.
+            if (roadmapRequestVersions.get(slot) === version) {
+                checkbox.checked = previousValue;
+                setStatus(
+                    "matchStatus",
+                    `Could not save that milestone: ${humanizeError(error)}`,
+                    "error"
+                );
+            }
+        }
+    } finally {
+        pendingMilestoneUpdates.delete(updateKey);
+        if (epoch === state.epoch) {
+            const currentSlot = $(`roadmap-${researcherId}`);
+            if (currentSlot && currentSlot.dataset.open === "1") {
+                currentSlot.querySelectorAll('input[type="checkbox"]').forEach(control => {
+                    control.disabled = pendingMilestoneUpdates.has(updateKey);
+                });
+            }
+        }
+    }
+}
 
-        list.innerHTML = "";
+async function toggleRoadmap(researcherId) {
+    const slot = $(`roadmap-${researcherId}`);
+    if (!slot) return;
 
-        if (!filtered.length) {
-            list.textContent = "No researchers match that search.";
+    if (slot.dataset.open === "1") {
+        roadmapVersion(slot); // Invalidate delayed reads and writes for this view.
+        slot.innerHTML = "";
+        slot.dataset.open = "";
+        return;
+    }
+
+    const version = roadmapVersion(slot);
+    slot.dataset.open = "1";
+    slot.textContent = "Loading your roadmap…";
+
+    const epoch = state.epoch;
+
+    try {
+        const roadmap = await api.getRoadmap(researcherId);
+        if (!isCurrentRoadmapSlot(researcherId, slot, epoch, version)) return;
+        renderRoadmap(slot, roadmap, researcherId);
+    } catch (error) {
+        if (!isCurrentRoadmapSlot(researcherId, slot, epoch, version)) return;
+        slot.dataset.open = "";
+
+        if (error.kind === "unauthorized") return;
+
+        slot.innerHTML = errorBlockHTML(
+            `Could not load this roadmap: ${humanizeError(error)}`,
+            `onclick="toggleRoadmap(${researcherId})"`
+        );
+    }
+}
+
+function toggleRequestForm(researcherId) {
+    const slot = $(`request-${researcherId}`);
+    if (!slot) return;
+
+    if (slot.dataset.open === "1") {
+        slot.innerHTML = "";
+        slot.dataset.open = "";
+        return;
+    }
+
+    slot.dataset.open = "1";
+    slot.innerHTML = `
+        <div class="roadmap-label">Message for the researcher</div>
+        <textarea rows="3" maxlength="1000"
+                  placeholder="Why you want to work with them and what you can offer."></textarea>
+        <button type="button" class="btn btn-small">Send request</button>
+        <p class="status-text" role="status"></p>`;
+
+    const textarea = slot.querySelector("textarea");
+    const button = slot.querySelector("button");
+    const status = slot.querySelector(".status-text");
+
+    button.addEventListener("click", async () => {
+        const message = (textarea.value || "").trim();
+
+        if (!message) {
+            status.textContent = "Add a short message before sending.";
+            status.classList.remove("success");
+            status.classList.add("error");
             return;
         }
 
-        filtered.forEach(person => {
-            const item = document.createElement("div");
-            item.style.cssText = "padding:15px 0;border-bottom:1px solid var(--border)";
+        button.disabled = true;
+        status.textContent = "Sending request…";
+        status.classList.remove("error", "success");
 
-            item.innerHTML = `
-                <b style="color:#FFF">${escapeHTML(person.name)}</b>
-                <span style="color:var(--text-sub);font-size:12px">
-                    (${escapeHTML(person.department || "Department not specified")})
-                </span>
-                <p style="color:var(--text-sub);font-size:13px;margin-top:6px">
-                    ${escapeHTML(person.research_areas || person.expertise || "Research interests not provided")}
-                </p>
-                <p style="color:var(--text-sub);font-size:12px;margin-top:4px">
-                    Skills: ${escapeHTML(person.skills || "Not listed")}
-                </p>
-            `;
+        const epoch = state.epoch;
 
-            list.appendChild(item);
-        });
+        try {
+            const record = await api.createCollaborationRequest(researcherId, message);
+            if (epoch !== state.epoch) return;
+
+            slot.dataset.open = "";
+            slot.innerHTML = "";
+            slot.append(requestItemHTML(record));
+            setStatus(
+                "requestsStatus",
+                "Request sent. Track it under My Requests.",
+                "success"
+            );
+        } catch (error) {
+            if (epoch !== state.epoch) return;
+            button.disabled = false;
+            status.textContent = humanizeError(error);
+            status.classList.remove("success");
+            status.classList.add("error");
+        }
+    });
+}
+
+function requestItemHTML(record) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "request-item";
+
+    const researcher = record.researcher || {};
+    const created = record.created_at
+        ? new Date(record.created_at * 1000).toLocaleString()
+        : "";
+    const response = record.faculty_response
+        ? `<p style="font-size:13px;margin-top:6px">Reply: ${escapeHTML(record.faculty_response)}</p>`
+        : "";
+
+    wrapper.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+            <b style="color:#FFF">${escapeHTML(researcher.name || "Researcher")}</b>
+            <span class="status-pill ${STATUS_CLASS[record.status] || "status-pending"}">
+                ${escapeHTML(record.status)}
+            </span>
+        </div>
+        <p style="font-size:12px;color:var(--text-sub)">
+            ${escapeHTML(researcher.department || "Department not specified")}${created ? ` &middot; sent ${escapeHTML(created)}` : ""}
+        </p>
+        <p style="font-size:13px;margin-top:6px">${escapeHTML(record.message)}</p>
+        ${response}`;
+
+    return wrapper;
+}
+
+async function loadMyRequests() {
+    const list = $("requestsList");
+    setStatus("requestsStatus", "Loading your requests…");
+
+    const epoch = state.epoch;
+
+    try {
+        const data = await api.listMyCollaborationRequests();
+        if (epoch !== state.epoch) return;
+
+        const records = Array.isArray(data.requests) ? data.requests : [];
+        list.innerHTML = "";
+
+        if (!records.length) {
+            list.innerHTML = `
+                <p style="color:var(--text-sub);margin-top:12px">
+                    You have not sent any collaboration requests yet. Open ML Recommendations
+                    and use "Request collaboration" on a researcher card.
+                </p>`;
+            setStatus("requestsStatus", "");
+            return;
+        }
+
+        records.forEach(record => list.appendChild(requestItemHTML(record)));
+        setStatus("requestsStatus", `${records.length} request(s).`, "success");
     } catch (error) {
-        list.textContent = `Faculty search failed: ${error.message}. Check the backend and CORS configuration.`;
+        if (epoch !== state.epoch) return;
+        list.innerHTML = "";
+        if (error.kind === "unauthorized") return;
+        setStatus(
+            "requestsStatus",
+            `Could not load your requests: ${humanizeError(error)}`,
+            "error"
+        );
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    loadStudentProfile();
-    fetchMatches();
-});
+function linkPanelHTML(intro) {
+    return `
+        <p style="font-size:13px;color:var(--text-sub)">${escapeHTML(intro)}</p>
+        <div id="linkResults"></div>`;
+}
 
+function renderLinkedRecord(researcher) {
+    const results = $("linkResults");
+    if (!results) return;
+
+    results.innerHTML = "";
+
+    if (!researcher) {
+        results.innerHTML = '<p style="color:var(--text-sub)">Your linked record could not be read.</p>';
+        return;
+    }
+
+    const row = document.createElement("div");
+    row.className = "request-item";
+    row.innerHTML = `
+        <div>
+            <b style="color:#FFF">${escapeHTML(researcher.name || "Linked record")}</b>
+            <span style="color:var(--text-sub);font-size:12px">
+                (${escapeHTML(researcher.department || "Department not specified")})
+            </span>
+        </div>
+        <p style="color:var(--text-sub);font-size:12px;margin:6px 0 0">
+            Linked by an administrator. Only an administrator can change this record.
+        </p>`;
+    results.appendChild(row);
+}
+
+function renderInboxRecord(record) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "request-item";
+
+    const student = record.student || {};
+
+    wrapper.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+            <b style="color:#FFF">${escapeHTML(student.full_name || "Student")}</b>
+            <span class="status-pill ${STATUS_CLASS[record.status] || "status-pending"}">
+                ${escapeHTML(record.status)}
+            </span>
+        </div>
+        <p style="font-size:13px;margin-top:6px">${escapeHTML(record.message)}</p>
+        <div class="roadmap-label">Student profile</div>
+        <p style="font-size:12px;color:var(--text-sub)">
+            Interests: ${escapeHTML(student.research_areas || "Not provided")}<br>
+            Expertise: ${escapeHTML(student.expertise || "Not provided")}<br>
+            Skills: ${escapeHTML(student.skills || "Not provided")}<br>
+            Courses: ${escapeHTML(student.courses || "Not provided")}<br>
+            Projects: ${escapeHTML(student.projects || "Not provided")}<br>
+            Publications: ${escapeHTML(student.publications || "Not provided")}<br>
+            Academic details: ${escapeHTML(student.academic_details || "Not provided")}
+        </p>`;
+
+    if (record.faculty_response) {
+        const reply = document.createElement("p");
+        reply.style.cssText = "font-size:13px;margin-top:6px";
+        reply.textContent = `Your reply: ${record.faculty_response}`;
+        wrapper.appendChild(reply);
+    }
+
+    const form = document.createElement("div");
+    form.style.marginTop = "10px";
+    form.innerHTML = `
+        <textarea rows="2" maxlength="1000" placeholder="Optional reply to the student."></textarea>`;
+
+    const decisionRow = document.createElement("div");
+    form.appendChild(decisionRow);
+
+    const textarea = form.querySelector("textarea");
+
+    if (record.status === "pending") {
+        [["accept", "Accept"], ["reject", "Reject"]].forEach(([decision, label]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "btn btn-small " + (decision === "accept" ? "" : "btn-secondary");
+            button.textContent = label;
+            button.addEventListener("click", () => decideRequest(record.id, decision, textarea));
+            decisionRow.appendChild(button);
+        });
+    }
+
+    wrapper.appendChild(form);
+    return wrapper;
+}
+
+async function decideRequest(requestId, decision, textarea) {
+    decisionButtonsDisabled(true);
+    const epoch = state.epoch;
+
+    try {
+        await api.decideCollaborationRequest(requestId, decision, (textarea.value || "").trim());
+        if (epoch !== state.epoch) return;
+        await loadFacultyInbox();
+    } catch (error) {
+        if (epoch !== state.epoch) return;
+        setStatus(
+            "inboxStatus",
+            `Could not record that decision: ${humanizeError(error)}`,
+            "error"
+        );
+    } finally {
+        decisionButtonsDisabled(false);
+    }
+}
+
+function decisionButtonsDisabled(disabled) {
+    document.querySelectorAll("#inboxList button").forEach(button => {
+        button.disabled = disabled;
+    });
+}
+
+async function loadFacultyInbox() {
+    const list = $("inboxList");
+    const panel = $("linkPanel");
+    setStatus("inboxStatus", "Loading your requests…");
+
+    const epoch = state.epoch;
+
+    try {
+        const link = await api.getFacultyResearcherLink();
+        if (epoch !== state.epoch) return;
+
+        if (!link || !link.linked) {
+            const userId = state.user?.id || "unknown";
+            panel.innerHTML = linkPanelHTML(
+                `Your account (ID: ${userId}) is not linked to a researcher directory record yet. ` +
+                "An administrator must verify your identity and link your account before student " +
+                "requests can appear here. Directory records cannot be claimed from this page."
+            );
+            list.innerHTML = "";
+            setStatus("inboxStatus", "Waiting for an administrator to link your account.", "");
+            return;
+        }
+
+        panel.innerHTML = linkPanelHTML(
+            `Requests below are addressed to ${link.researcher?.name || "your linked record"}. ` +
+            "Only an administrator can change which directory record your account is linked to."
+        );
+        renderLinkedRecord(link.researcher);
+
+        const data = await api.listFacultyCollaborationRequests();
+        if (epoch !== state.epoch) return;
+
+        const records = Array.isArray(data.requests) ? data.requests : [];
+        list.innerHTML = "";
+
+        if (!records.length) {
+            list.innerHTML = `
+                <p style="color:var(--text-sub);margin-top:12px">
+                    No student requests have been received for this record yet.
+                </p>`;
+            setStatus("inboxStatus", "", "");
+            return;
+        }
+
+        records.forEach(record => list.appendChild(renderInboxRecord(record)));
+        setStatus("inboxStatus", `${records.length} request(s).`, "success");
+    } catch (error) {
+        if (epoch !== state.epoch) return;
+        list.innerHTML = "";
+        if (error.kind === "unauthorized") return;
+        setStatus("inboxStatus", `Could not load requests: ${humanizeError(error)}`, "error");
+    }
+}
+
+async function init() {
+    if (!api) {
+        showAuth("This page could not load its API client (api-client.js). Reload the page or contact the administrator.");
+        ["loginBtn", "registerBtn"].forEach((id) => {
+            const button = $(id);
+            if (button) button.disabled = true;
+        });
+        return;
+    }
+
+    api.setUnauthorizedHandler(handleUnauthorized);
+
+    if (!api.hasSession()) {
+        resetAppState();
+        showAuth("");
+        return;
+    }
+
+    showAuth("Restoring your session…", "info");
+    ["loginBtn", "registerBtn"].forEach((id) => {
+        const button = $(id);
+        if (button) button.disabled = true;
+    });
+
+    try {
+        const user = await api.me();
+        await enterApp(user);
+    } catch (error) {
+        if (error.kind === "unauthorized") return;
+        resetAppState();
+        showAuth(`Could not restore your session: ${humanizeError(error)}`);
+    }
+}
+
+window.addEventListener("DOMContentLoaded", init);
     </script>
 </body>
 </html>

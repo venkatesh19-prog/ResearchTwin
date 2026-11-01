@@ -72,12 +72,18 @@ def build_structured_profile(researcher: Researcher) -> dict:
     }
 
 
-def get_researcher_profiles(db: Session):
+def get_researcher_profiles(db: Session, offset: int = 0, limit: int = 500):
     """
     Return structured research profiles for all researchers.
     """
 
-    researchers = db.query(Researcher).all()
+    researchers = (
+        db.query(Researcher)
+        .order_by(Researcher.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     results = []
 

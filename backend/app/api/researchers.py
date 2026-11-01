@@ -1,19 +1,34 @@
+import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Researcher
 from ..schemas import ResearcherCreate, ResearcherResponse
-from ..services.researcher_import import import_researchers
+from ..services.researcher_import import (
+    ResearcherImportError,
+    import_researchers,
+)
 from ..services.researcher_intelligence import get_researcher_profiles
+from .deps import require_admin
 
 
 router = APIRouter(
     prefix="/researchers",
     tags=["Researchers"]
 )
+
+logger = logging.getLogger("researchtwin.researchers")
+
+
+def _contains(expression, term: str):
+    """Case-insensitive substring match with the caller's wildcards escaped."""
+    escaped = term.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+    return expression.ilike(f"%{escaped}%", escape="\\")
 
 
 # --------------------------------------------------
@@ -23,7 +38,8 @@ router = APIRouter(
 @router.post("/", response_model=ResearcherResponse)
 def create_researcher(
     researcher: ResearcherCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     new_researcher = Researcher(
         **researcher.model_dump()
@@ -42,38 +58,46 @@ def create_researcher(
 
 @router.get("/", response_model=list[ResearcherResponse])
 def get_researchers(
-    department: str | None = None,
-    research_area: str | None = None,
-    skill: str | None = None,
+    search: str | None = Query(default=None, max_length=200),
+    department: str | None = Query(default=None, max_length=150),
+    research_area: str | None = Query(default=None, max_length=200),
+    skill: str | None = Query(default=None, max_length=150),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=500),
     db: Session = Depends(get_db)
 ):
     query = db.query(Researcher)
 
+    # Free-text search across the descriptive columns
+    if search:
+        term = search.strip()
+        if term:
+            query = query.filter(
+                or_(
+                    _contains(Researcher.name, term),
+                    _contains(Researcher.department, term),
+                    _contains(Researcher.designation, term),
+                    _contains(Researcher.research_areas, term),
+                    _contains(Researcher.expertise, term),
+                    _contains(Researcher.skills, term),
+                    _contains(Researcher.publications, term),
+                    _contains(Researcher.projects, term),
+                )
+            )
+
     # Filter by department
     if department:
-        query = query.filter(
-            Researcher.department.ilike(
-                f"%{department}%"
-            )
-        )
+        query = query.filter(_contains(Researcher.department, department))
 
     # Filter by research area
     if research_area:
-        query = query.filter(
-            Researcher.research_areas.ilike(
-                f"%{research_area}%"
-            )
-        )
+        query = query.filter(_contains(Researcher.research_areas, research_area))
 
     # Filter by skill
     if skill:
-        query = query.filter(
-            Researcher.skills.ilike(
-                f"%{skill}%"
-            )
-        )
+        query = query.filter(_contains(Researcher.skills, skill))
 
-    return query.all()
+    return query.order_by(Researcher.id).offset(offset).limit(limit).all()
 
 
 # --------------------------------------------------
@@ -82,9 +106,11 @@ def get_researchers(
 
 @router.get("/intelligence")
 def researcher_intelligence(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=500),
     db: Session = Depends(get_db)
 ):
-    return get_researcher_profiles(db)
+    return get_researcher_profiles(db, offset=offset, limit=limit)
 
 
 # --------------------------------------------------
@@ -125,7 +151,8 @@ def get_researcher(
 def update_researcher(
     researcher_id: int,
     researcher_data: ResearcherCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     researcher = (
         db.query(Researcher)
@@ -157,7 +184,8 @@ def update_researcher(
 @router.delete("/{researcher_id}")
 def delete_researcher(
     researcher_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     researcher = (
         db.query(Researcher)
@@ -186,19 +214,14 @@ def delete_researcher(
 
 @router.post("/import")
 def import_researcher_data(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
 ):
     csv_path = (
         Path(__file__).resolve().parents[2]
         / "data"
         / "researchers.csv"
     )
-
-    if not csv_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="researchers.csv not found"
-        )
 
     try:
         count = import_researchers(
@@ -211,10 +234,27 @@ def import_researcher_data(
             "imported_count": count
         }
 
-    except Exception as e:
+    except ResearcherImportError as exc:
         db.rollback()
-
+        logger.warning("Researcher import validation failed (%s)", type(exc).__name__)
+        raise HTTPException(
+            status_code=422,
+            detail="Researcher import file is invalid",
+        ) from exc
+    except FileNotFoundError as exc:
+        db.rollback()
+        logger.error("Researcher import source is unavailable (%s)", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Researcher import source is unavailable",
+        ) from exc
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.error("Researcher import failed (%s)", type(exc).__name__)
         raise HTTPException(
             status_code=500,
-            detail=f"Import failed: {str(e)}"
-        )
+            detail="Researcher import failed",
+        ) from exc

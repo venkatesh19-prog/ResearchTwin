@@ -192,3 +192,90 @@ def generate_readiness_roadmap(
             else "No skill gaps were returned for this researcher."
         )
     }
+
+
+def build_student_roadmap(
+    researcher: dict[str, Any],
+    skill_data: dict[str, Any],
+    completed_milestones: set[tuple[str, int]] | None = None
+) -> dict[str, Any]:
+    """Build one student's roadmap for a researcher from server-side skill data.
+
+    ``skill_data`` must come from ``calculate_skill_gap`` using the student's
+    own saved profile. When the student lists no skills their position is
+    unknown, so no skill is reported as a gap.
+    """
+    student_skills_provided = bool(
+        skill_data.get("student_skills_provided", True)
+    )
+
+    roadmap = generate_readiness_roadmap(
+        researcher=researcher,
+        matched_skills=skill_data.get("matched_skills", []),
+        skill_gap=skill_data.get("skill_gap", []) if student_skills_provided else [],
+    )
+
+    roadmap["student_skills_provided"] = student_skills_provided
+    roadmap["researcher_skills"] = sorted(
+        {
+            str(skill).strip().lower()
+            for skill in (
+                list(skill_data.get("matched_skills", []))
+                + list(skill_data.get("skill_gap", []))
+            )
+            if str(skill).strip()
+        },
+        key=str.casefold,
+    )
+    roadmap["researcher_skill_count"] = skill_data.get("researcher_skill_count", 0)
+
+    if not student_skills_provided:
+        roadmap["message"] = (
+            "Add your technical skills to your student profile before a skill "
+            "gap can be computed for this researcher."
+        )
+
+    _attach_progress(roadmap, completed_milestones or set())
+    return roadmap
+
+
+def _attach_progress(
+    roadmap: dict[str, Any],
+    completed_milestones: set[tuple[str, int]]
+) -> None:
+    total = 0
+    done = 0
+
+    for item in roadmap["skill_gaps"]:
+        skill = item["skill"]
+        milestones = []
+
+        for index, text in enumerate(item["milestones"]):
+            is_completed = (skill.casefold(), index) in completed_milestones
+            milestones.append({
+                "index": index,
+                "text": text,
+                "completed": is_completed,
+            })
+            total += 1
+            done += 1 if is_completed else 0
+
+        item["milestones"] = milestones
+        item["milestones_total"] = len(milestones)
+        item["milestones_completed"] = sum(
+            1 for milestone in milestones if milestone["completed"]
+        )
+
+    roadmap["progress"] = {
+        "total_milestones": total,
+        "completed_milestones": done,
+        "completion_percentage": round(done * 100 / total) if total else 0,
+    }
+
+
+def milestone_bounds(roadmap: dict[str, Any]) -> dict[str, int]:
+    """Return the number of milestones for each skill in a roadmap."""
+    return {
+        item["skill"]: item["milestones_total"]
+        for item in roadmap.get("skill_gaps", [])
+    }

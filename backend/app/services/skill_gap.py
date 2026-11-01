@@ -61,5 +61,8 @@ def calculate_skill_gap(
         ),
         "researcher_skill_count": len(
             researcher_skill_set
-        )
+        ),
+        # A student who lists no skills has an unknown position, not a
+        # confirmed gap in every researcher skill.
+        "student_skills_provided": bool(student_skill_set)
     }

@@ -6,3 +6,26 @@ venv/
 .env
 .env.*
 !.env.example
+
+# Node dependencies (installed locally, never committed)
+node_modules/
+
+# Python test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local SQLite databases
+*.sqlite
+*.sqlite3
+
+# Local agent/tool metadata
+.agent_harnesses.json
+
+# Local backup copies
+*.bak
+
+# Temporary model compatibility artifacts only; the active seven-feature
+# bundle (backend/models/researchtwin_logistic_v2_7features.joblib) is
+# deliberately NOT ignored and must stay tracked.
+backend/models/researchtwin_logistic_compat_test.joblib

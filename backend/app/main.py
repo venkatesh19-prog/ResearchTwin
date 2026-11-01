@@ -1,11 +1,28 @@
+import logging
 import os
-from fastapi import FastAPI
 
-from .database import Base, engine
-from . import models
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from .database import Base, engine, get_db
+from . import models
+from .middleware import RequestBodyLimitMiddleware
 from .api.researchers import router as researcher_router
 from .api.students import router as student_router
+from .api.auth import router as auth_router
+from .api.profiles import router as profile_router
+from .api.roadmap import router as roadmap_router
+from .api.collaboration import router as collaboration_router
+from .services import recommendation
+from .services.rate_limit import is_rate_limit_ready
+
+
+logger = logging.getLogger("researchtwin.database")
+readiness_logger = logging.getLogger("researchtwin.readiness")
 
 
 # --------------------------------------------------
@@ -25,6 +42,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(RequestBodyLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys(["http://127.0.0.1:5500", "http://localhost:5500"] + [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "").split(",") if origin.strip()])),
@@ -38,6 +56,28 @@ app.add_middleware(
 
 app.include_router(researcher_router)
 app.include_router(student_router)
+app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(roadmap_router)
+app.include_router(collaboration_router)
+
+
+# --------------------------------------------------
+# DATABASE FAILURE HANDLING
+# --------------------------------------------------
+
+@app.exception_handler(SQLAlchemyError)
+async def database_error_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(
+        "Database error while handling %s %s (%s)",
+        request.method,
+        request.url.path,
+        type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database unavailable"},
+    )
 
 
 # --------------------------------------------------
@@ -57,7 +97,59 @@ def root():
 # --------------------------------------------------
 
 @app.get("/health")
-def health_check():
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        logger.error("Health check database probe failed (%s)", type(exc).__name__)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy"},
+        )
+
     return {
         "status": "healthy"
+    }
+
+
+# --------------------------------------------------
+# READINESS CHECK
+# --------------------------------------------------
+
+@app.get("/ready")
+@app.get("/readiness")
+def readiness_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        readiness_logger.error(
+            "Readiness database probe failed (%s)", type(exc).__name__
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready"},
+        )
+
+    try:
+        recommendation.verify_serving_artifacts()
+    except recommendation.RecommendationError as exc:
+        readiness_logger.error(
+            "Readiness model artifact check failed: %s", exc
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready"},
+        )
+
+    if not is_rate_limit_ready(db):
+        readiness_logger.error(
+            "Readiness request-protection configuration is incomplete"
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready"},
+        )
+
+    return {
+        "status": "ready"
     }

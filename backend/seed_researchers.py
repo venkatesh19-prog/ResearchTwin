@@ -1,7 +1,3 @@
-from app.database import SessionLocal
-from app.models import Researcher
-
-
 researchers = [
     {
         "name": "Dr. Anil Kumar",
@@ -336,15 +332,22 @@ researchers = [
 ]
 
 
-db = SessionLocal()
+class ExistingResearcherDataError(RuntimeError):
+    """Raised when demo seeding would mix with existing directory data."""
 
-try:
-    # Remove existing demo researchers
-    db.query(Researcher).delete()
-    db.commit()
 
-    for data in researchers:
-        researcher = Researcher(
+def seed_researchers(db, records=None) -> int:
+    """Insert demo rows only when the researcher table is completely empty."""
+    from app.models import Researcher
+
+    if db.query(Researcher.id).first() is not None:
+        raise ExistingResearcherDataError(
+            "Researcher table is not empty; demo seeding was refused."
+        )
+
+    source = researchers if records is None else records
+    rows = [
+        Researcher(
             name=data["name"],
             department=data["department"],
             designation=data["designation"],
@@ -356,12 +359,48 @@ try:
             projects=data["projects"],
             profile_url="https://example.com/researcher",
         )
+        for data in source
+    ]
+    try:
+        db.add_all(rows)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return len(rows)
 
-        db.add(researcher)
 
-    db.commit()
+def main() -> None:
+    """Explicitly gated local SQLite-only demo seeding command."""
+    import os
 
-    print(f"Successfully added {len(researchers)} researchers.")
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url:
+        raise SystemExit("Set DATABASE_URL explicitly before demo seeding.")
+    if os.getenv("RESEARCHTWIN_ALLOW_DEMO_SEED") != "YES":
+        raise SystemExit(
+            "Demo seeding is disabled. Set RESEARCHTWIN_ALLOW_DEMO_SEED=YES "
+            "for an intentional local seed."
+        )
+    if not database_url.startswith("sqlite:///") or ":memory:" in database_url:
+        raise SystemExit("Demo seeding is restricted to a file-backed SQLite database.")
 
-finally:
-    db.close()
+    confirmation = input(
+        "This will add demo researchers to an empty local SQLite database. "
+        "Type SEED EMPTY SQLITE DATABASE to continue: "
+    )
+    if confirmation != "SEED EMPTY SQLITE DATABASE":
+        raise SystemExit("Confirmation did not match; no data was changed.")
+
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        count = seed_researchers(db)
+    finally:
+        db.close()
+    print(f"Added {count} demo researchers.")
+
+
+if __name__ == "__main__":
+    main()

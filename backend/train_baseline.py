@@ -26,7 +26,6 @@ FEATURES = [
     "skill_overlap",
     "project_similarity",
     "publication_similarity",
-    "department_match"
 ]
 
 

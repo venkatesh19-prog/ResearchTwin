@@ -1,0 +1,4 @@
+# Test-only dependencies. Not required at runtime.
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+pytest>=9,<10
+httpx>=0.28,<1

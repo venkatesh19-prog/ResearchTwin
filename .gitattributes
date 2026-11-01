@@ -1,0 +1,9 @@
+# Binary artifacts must never undergo line-ending conversion or diffing.
+*.joblib binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# The model records this dataset's SHA-256 at training time, so its bytes
+# must be stored verbatim on every platform.
+backend/data/matching_topk_labeled.csv -text
