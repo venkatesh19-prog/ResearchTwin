@@ -1,8 +1,12 @@
 """Semantic matching edge-case tests (no embedding model download)."""
 
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
-from types import SimpleNamespace
 
 from app.services import semantic_matching
 
@@ -216,3 +220,53 @@ def test_build_texts_skip_missing_fields():
 
     assert semantic_matching.build_researcher_text(researcher) == "Python"
     assert semantic_matching.build_student_text({"skills": "Python"}) == "Python"
+
+
+def test_mean_pool_ignores_padding_and_normalises():
+    hidden = np.array(
+        [[[3.0, 4.0], [0.0, 5.0], [100.0, 100.0]]], dtype=np.float32
+    )
+    attention_mask = np.array([[1, 1, 0]])
+
+    pooled = semantic_matching.mean_pool(hidden, attention_mask)
+
+    np.testing.assert_allclose(
+        pooled,
+        [[0.31622776, 0.9486833]],
+        rtol=1e-6,
+    )
+
+
+def test_missing_model_files_raise_semantic_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        semantic_matching, "MODEL_PATH", str(tmp_path / "missing.onnx")
+    )
+    monkeypatch.setattr(semantic_matching, "_embedder", None)
+
+    with pytest.raises(semantic_matching.SemanticMatchingError):
+        semantic_matching.get_model()
+
+
+def test_concurrent_first_use_builds_a_single_embedder(monkeypatch):
+    built = []
+
+    class SlowEmbedder:
+        def __init__(self, *args):
+            time.sleep(0.05)
+            built.append(self)
+
+    monkeypatch.setattr(semantic_matching, "OnnxTextEmbedder", SlowEmbedder)
+    monkeypatch.setattr(semantic_matching, "verify_model_files", lambda: None)
+    monkeypatch.setattr(semantic_matching, "_embedder", None)
+
+    barrier = threading.Barrier(8)
+
+    def load():
+        barrier.wait()
+        return semantic_matching.get_model()
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        loaded = [future.result() for future in [pool.submit(load) for _ in range(8)]]
+
+    assert len(built) == 1, f"expected one embedder, built {len(built)}"
+    assert len({id(model) for model in loaded}) == 1

@@ -133,7 +133,7 @@ def test_readiness_fails_when_lazy_runtime_dependencies_are_missing(
     real_find_spec = importlib.util.find_spec
 
     def fake_find_spec(name, package=None):
-        if name in {"sentence_transformers", "shap"}:
+        if name in {"onnxruntime", "tokenizers", "shap"}:
             return None
         return real_find_spec(name, package)
 
@@ -145,15 +145,11 @@ def test_readiness_fails_when_lazy_runtime_dependencies_are_missing(
     assert response.json() == {"status": "not_ready"}
 
 
-def test_readiness_does_not_load_the_sentence_transformer_model(
-    client, monkeypatch
-):
+def test_readiness_does_not_load_the_embedding_model(client, monkeypatch):
     from app.services import semantic_matching
 
     def fail():
-        raise AssertionError(
-            "readiness must not initialise the sentence-transformer model"
-        )
+        raise AssertionError("readiness must not initialise the embedding model")
 
     monkeypatch.setattr(semantic_matching, "get_model", fail)
 
@@ -161,3 +157,18 @@ def test_readiness_does_not_load_the_sentence_transformer_model(
 
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}
+
+
+def test_readiness_fails_when_embedding_model_files_are_missing(
+    client, monkeypatch, tmp_path
+):
+    from app.services import semantic_matching
+
+    monkeypatch.setattr(
+        semantic_matching, "MODEL_PATH", str(tmp_path / "missing-model.onnx")
+    )
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}

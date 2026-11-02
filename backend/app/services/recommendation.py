@@ -13,9 +13,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from ..models import Researcher
 from .researcher_intelligence import build_structured_profile
 from .semantic_matching import (
+    SemanticMatchingError,
     build_student_text,
     build_researcher_text,
     calculate_semantic_similarity,
+    verify_model_files,
 )
 from .skill_gap import calculate_skill_gap, normalize_skills
 
@@ -136,7 +138,7 @@ def load_model():
     return _model_bundle
 
 
-_LAZY_RUNTIME_MODULES = ("sentence_transformers", "shap")
+_LAZY_RUNTIME_MODULES = ("onnxruntime", "tokenizers", "shap")
 
 
 def _missing_lazy_runtime_modules():
@@ -157,9 +159,8 @@ def _missing_lazy_runtime_modules():
 def verify_serving_artifacts():
     """Validate the serving artifacts without loading heavy ML extras.
 
-    Loading the model bundle imports scikit-learn only; the
-    sentence-transformer encoder used for semantic similarity is not
-    touched here.
+    Loading the model bundle imports scikit-learn only; the ONNX embedding
+    session used for semantic similarity is not created here.
     """
 
     missing = _missing_lazy_runtime_modules()
@@ -169,6 +170,11 @@ def verify_serving_artifacts():
             "Lazy recommendation dependencies are not installed: "
             + ", ".join(missing)
         )
+
+    try:
+        verify_model_files()
+    except SemanticMatchingError as exc:
+        raise RecommendationError(str(exc)) from exc
 
     bundle = load_model()
 

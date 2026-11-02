@@ -1,6 +1,6 @@
 # Backend testing
 
-## Latest local verification — Phase 4 (2026-11-01)
+## Latest local verification — Phase 5H (2026-11-03)
 
 Canonical Python 3.11 run from `backend/`:
 
@@ -8,9 +8,17 @@ Canonical Python 3.11 run from `backend/`:
 C:\Users\Venkatesh\researchtwin-venv311\Scripts\python.exe -m pytest -q
 ```
 
-Result: **228 passed, 2 upstream deprecation warnings** in 57.91 seconds. The warnings are from Starlette's `httpx` TestClient integration and AnyIO's `BlockingPortal` alias. The separately installed Python 3.11.9 temporary environment from Phase 3 was rechecked: **228 passed, 2 same warnings**, `pip check` reported no broken requirements. That environment was reused; packages were not reinstalled during Phase 4.
+Result: **250 passed, 2 upstream deprecation warnings** in 48.66 seconds on
+Windows (CPython 3.11.9). The WSL Linux environment (CPython 3.11.11, matching
+Render's configured `PYTHON_VERSION`) passed the same **250 tests in 28.30 seconds**, and
+`pip check` reported no broken requirements. The warnings are from Starlette's
+`httpx` TestClient integration and AnyIO's `BlockingPortal` alias.
 
-The final frontend command was run from the repository root and passed **79 tests**. The real-browser Playwright suite passed **12 journey groups** on a separate temporary SQLite database. See `../PRODUCTION_RELEASE_CHECKLIST.md` for the browser setup and expected console messages. Historical Phase E/G counts below are snapshots from those phases, not the latest totals.
+The frontend suite (`npm test -- --run`) passed **81 tests**. The real-browser
+Playwright suite passed **12 journey groups** on a separate temporary SQLite
+database. See `../PRODUCTION_RELEASE_CHECKLIST.md` for the browser setup and
+expected console messages. Historical Phase E/G counts below are snapshots from
+those phases, not the latest totals.
 
 All commands below run from `backend/`.
 
@@ -23,8 +31,9 @@ Test-only dependencies: `requirements-dev.txt`.
 python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Production runs Python 3.11 with the pinned versions in `requirements.txt`
-(scikit-learn 1.7.2, shap 0.51.0, pandas 2.3.3). The model artifact was
+Render is configured for Python 3.11.11 (see `../render.yaml`) with the pinned
+versions in `requirements.txt` (scikit-learn 1.7.2, shap 0.51.0, pandas 2.3.3).
+The model artifact was
 trained with scikit-learn 1.7.2, so pinned-environment checks only execute
 when that version is installed; elsewhere they are reported as skipped.
 
@@ -43,7 +52,7 @@ collected. Tests are isolated:
   the system temp directory *before* importing `app`, so
   `backend/researchtwin.db` is never touched.
 - Semantic matching is stubbed (`patch_semantic`), so no embedding model is
-  downloaded and torch is not imported.
+  loaded and ONNX Runtime is not initialised.
 - `tests/test_integration_real_model.py` loads the shipped joblib bundle and
   `data/matching_topk_labeled.csv` and compares predictions against fixed
   reference probabilities.
@@ -85,13 +94,13 @@ CSV validation/atomicity, expiry/revocation, and profile isolation.
 py -3.11 -m venv C:/Users/<you>/researchtwin-venv311
 C:/Users/<you>/researchtwin-venv311/Scripts/python.exe -m pip install --upgrade pip
 C:/Users/<you>/researchtwin-venv311/Scripts/python.exe -m pip install \
-  --index-url https://download.pytorch.org/whl/cpu torch
-C:/Users/<you>/researchtwin-venv311/Scripts/python.exe -m pip install \
-  -r requirements.txt -r requirements-dev.txt
+  -r requirements.txt -c constraints.txt -r requirements-dev.txt
+C:/Users/<you>/researchtwin-venv311/Scripts/python.exe scripts/fetch_embedding_model.py
 C:/Users/<you>/researchtwin-venv311/Scripts/python.exe -m pytest
 ```
 
-The CPU-only torch index avoids a multi-GB CUDA download.
+`fetch_embedding_model.py` downloads the SHA-256-verified ONNX MiniLM graph
+used by semantic matching; it is not committed to the repository.
 
 ## Live API check
 
@@ -115,11 +124,13 @@ The CPU-only torch index avoids a multi-GB CUDA download.
    `POST /recommendations/researchers` now requires student authentication and
    uses the saved profile; submitted profile fields are ignored.
 
-The first recommendation request lazily imports torch and loads
-`all-MiniLM-L6-v2`; in the development environment this took ~18 s and grew
-the process working set from ~196 MB to ~718 MB. Warm requests took ~0.4 s
-and memory stayed flat (~720 MB). See the handover report for the production
-implications of that footprint.
+The first recommendation request lazily loads the ONNX `all-MiniLM-L6-v2`
+session. With the 30-row directory, WSL Linux (CPython 3.11.11) measured a
+**412.2 MB** peak for the service workflow and **414.9–421.4 MB** through the
+HTTP route; warm requests took 0.28–0.33 s and memory stayed flat afterwards.
+These are **WSL Linux measurements, not Render measurements**, and Render Free
+compatibility has not been measured on Render. Earlier torch-based runs peaked
+at ~644 MB, which exceeded the 512 MB Render Free limit.
 
 ## HTTP behaviour
 

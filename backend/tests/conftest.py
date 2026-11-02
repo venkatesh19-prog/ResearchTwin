@@ -129,7 +129,7 @@ def reset_model_caches():
 
     from app.services import semantic_matching
 
-    semantic_matching.get_model.cache_clear()
+    semantic_matching._embedder = None
 
     db = SessionLocal()
     try:
@@ -142,7 +142,7 @@ def reset_model_caches():
 
     recommendation._model_bundle = None
     recommendation._shap_explainer = None
-    semantic_matching.get_model.cache_clear()
+    semantic_matching._embedder = None
     db = SessionLocal()
     try:
         db.query(RateLimitCounter).delete()

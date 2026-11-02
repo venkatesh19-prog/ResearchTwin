@@ -1,27 +1,160 @@
-from functools import lru_cache
+import os
+import threading
 
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_DIR = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "models",
+        "all-MiniLM-L6-v2-onnx",
+    )
+)
+MODEL_PATH = os.path.join(MODEL_DIR, "model.onnx")
+TOKENIZER_PATH = os.path.join(MODEL_DIR, "tokenizer.json")
+
+MAX_SEQUENCE_LENGTH = 256
+EMBED_BATCH_SIZE = 8
 
 
 class SemanticMatchingError(RuntimeError):
     """Raised when the embedding model cannot be loaded or used."""
 
 
-@lru_cache(maxsize=1)
-def get_model():
-    # Imported lazily: sentence-transformers pulls in torch, which costs
-    # hundreds of MB of RSS and is useless for routes that never embed text.
-    from sentence_transformers import SentenceTransformer
+def verify_model_files():
+    missing = [
+        path
+        for path in (MODEL_PATH, TOKENIZER_PATH)
+        if not os.path.exists(path)
+    ]
 
-    try:
-        return SentenceTransformer(MODEL_NAME)
-    except Exception as exc:
+    if missing:
         raise SemanticMatchingError(
-            f"Could not load the semantic embedding model "
-            f"'{MODEL_NAME}': {exc}"
-        ) from exc
+            "Semantic embedding model files are missing: "
+            + ", ".join(missing)
+            + ". Run python scripts/fetch_embedding_model.py."
+        )
+
+
+class OnnxTextEmbedder:
+    """all-MiniLM-L6-v2 mean-pooled sentence embeddings via ONNX Runtime.
+
+    Importing torch/sentence-transformers costs over 400 MB of RSS; the ONNX
+    graph produces the same vectors within float32 rounding at a fraction of
+    that footprint.
+    """
+
+    def __init__(self, model_path: str, tokenizer_path: str):
+        try:
+            import onnxruntime as ort
+            from tokenizers import Tokenizer
+        except ImportError as exc:
+            raise SemanticMatchingError(
+                f"Could not import the ONNX embedding runtime: {exc}"
+            ) from exc
+
+        self._tokenizer = Tokenizer.from_file(tokenizer_path)
+        self._tokenizer.enable_truncation(max_length=MAX_SEQUENCE_LENGTH)
+        self._tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")
+        self._session = ort.InferenceSession(
+            model_path,
+            providers=["CPUExecutionProvider"],
+        )
+        self._input_names = {
+            item.name for item in self._session.get_inputs()
+        }
+
+    def encode(self, texts, normalize_embeddings=True):
+        batch = list(texts)
+        outputs = []
+
+        for start in range(0, len(batch), EMBED_BATCH_SIZE):
+            outputs.append(
+                self._encode_batch(
+                    batch[start:start + EMBED_BATCH_SIZE],
+                    normalize_embeddings,
+                )
+            )
+
+        return np.vstack(outputs)
+
+    def _encode_batch(self, texts, normalize_embeddings):
+        encodings = self._tokenizer.encode_batch(texts)
+        attention_mask = np.array(
+            [encoding.attention_mask for encoding in encodings],
+            dtype=np.int64,
+        )
+        inputs = {
+            "input_ids": np.array(
+                [encoding.ids for encoding in encodings],
+                dtype=np.int64,
+            ),
+            "attention_mask": attention_mask,
+        }
+
+        if "token_type_ids" in self._input_names:
+            inputs["token_type_ids"] = np.array(
+                [encoding.type_ids for encoding in encodings],
+                dtype=np.int64,
+            )
+
+        hidden = self._session.run(None, inputs)[0]
+
+        return mean_pool(hidden, attention_mask, normalize_embeddings)
+
+
+def mean_pool(hidden, attention_mask, normalize=True):
+    """Mean-pool token states, ignoring padding, then L2-normalise."""
+
+    weights = attention_mask[..., None].astype(np.float32)
+    pooled = (hidden * weights).sum(axis=1) / np.clip(
+        weights.sum(axis=1),
+        1e-9,
+        None,
+    )
+
+    if normalize:
+        pooled = pooled / np.clip(
+            np.linalg.norm(pooled, axis=1, keepdims=True),
+            1e-12,
+            None,
+        )
+
+    return pooled.astype(np.float32)
+
+
+_embedder = None
+_embedder_lock = threading.Lock()
+
+
+def get_model():
+    global _embedder
+
+    if _embedder is not None:
+        return _embedder
+
+    with _embedder_lock:
+
+        if _embedder is not None:
+            return _embedder
+
+        verify_model_files()
+
+        try:
+            _embedder = OnnxTextEmbedder(MODEL_PATH, TOKENIZER_PATH)
+        except SemanticMatchingError:
+            raise
+        except Exception as exc:
+            raise SemanticMatchingError(
+                f"Could not load the semantic embedding model "
+                f"'{MODEL_NAME}': {exc}"
+            ) from exc
+
+    return _embedder
 
 
 def build_student_text(student_profile: dict) -> str:
