@@ -151,6 +151,25 @@ def test_semantic_failure_maps_to_503(
     assert "embedding backend unavailable" not in detail
 
 
+def test_shap_failure_maps_to_503(
+    raw_client, seeded_db, patch_semantic, monkeypatch
+):
+    patch_semantic()
+
+    def broken_explainer():
+        raise RuntimeError("shap backend exploded")
+
+    monkeypatch.setattr(recommendation, "get_shap_explainer", broken_explainer)
+
+    headers = _student_headers_with_profile(raw_client)
+    response = raw_client.post(ENDPOINT, json=STUDENT_PROFILE, headers=headers)
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail == "Recommendation service unavailable"
+    assert "shap backend exploded" not in detail
+
+
 def test_model_failure_maps_to_503(
     raw_client, seeded_db, patch_semantic, monkeypatch, tmp_path
 ):

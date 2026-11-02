@@ -1,4 +1,5 @@
 import hashlib
+import importlib.util
 import os
 import threading
 
@@ -135,6 +136,24 @@ def load_model():
     return _model_bundle
 
 
+_LAZY_RUNTIME_MODULES = ("sentence_transformers", "shap")
+
+
+def _missing_lazy_runtime_modules():
+    missing = []
+
+    for name in _LAZY_RUNTIME_MODULES:
+        try:
+            installed = importlib.util.find_spec(name) is not None
+        except (ImportError, ValueError):
+            installed = False
+
+        if not installed:
+            missing.append(name)
+
+    return missing
+
+
 def verify_serving_artifacts():
     """Validate the serving artifacts without loading heavy ML extras.
 
@@ -142,6 +161,14 @@ def verify_serving_artifacts():
     sentence-transformer encoder used for semantic similarity is not
     touched here.
     """
+
+    missing = _missing_lazy_runtime_modules()
+
+    if missing:
+        raise RecommendationError(
+            "Lazy recommendation dependencies are not installed: "
+            + ", ".join(missing)
+        )
 
     bundle = load_model()
 
@@ -243,9 +270,14 @@ def calculate_tfidf_similarity(
         ngram_range=(1, 2)
     )
 
-    matrix = vectorizer.fit_transform(
-        [student_text, researcher_text]
-    )
+    try:
+        matrix = vectorizer.fit_transform(
+            [student_text, researcher_text]
+        )
+    except ValueError:
+        # Stop-word-only input produces an empty vocabulary, which is
+        # the same "no lexical signal" case as empty text.
+        return 0.0
 
     score = cosine_similarity(
         matrix[0:1],
@@ -667,8 +699,6 @@ def generate_recommendations(
 
     scaler = model.named_steps["scaler"]
 
-    explainer = get_shap_explainer()
-
     X_top = pd.DataFrame([
 
         {
@@ -684,9 +714,18 @@ def generate_recommendations(
         X_top
     )
 
-    shap_result = explainer(
-        X_top_scaled
-    )
+    try:
+        explainer = get_shap_explainer()
+
+        shap_result = explainer(
+            X_top_scaled
+        )
+    except RecommendationError:
+        raise
+    except Exception as exc:
+        raise RecommendationError(
+            "Could not generate SHAP explanations."
+        ) from exc
 
     # -----------------------------------------------------
     # STEP 6: Final response

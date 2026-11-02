@@ -45,6 +45,12 @@ def test_serving_features_match_the_seven_feature_model(seeded_db, db):
     assert "department_match" not in features
 
 
+def test_stop_word_only_text_has_no_lexical_signal():
+    assert recommendation.calculate_tfidf_similarity(
+        "the and of", "the and of"
+    ) == 0.0
+
+
 def error_cls():
     error = getattr(recommendation, "RecommendationError", None)
     assert error is not None, "recommendation must define RecommendationError"

@@ -2,6 +2,7 @@
 
 import threading
 import time
+import warnings
 
 import joblib
 import numpy as np
@@ -57,6 +58,28 @@ def test_shipped_bundle_uses_expected_features():
 
     assert list(bundle["features"]) == EXPECTED_ORDER
     assert bundle["model_version"] == "researchtwin-logistic-v2-7features"
+
+
+def test_shipped_bundle_loads_without_runtime_version_warnings():
+    from sklearn.exceptions import InconsistentVersionWarning
+
+    recommendation._model_bundle = None
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        recommendation.load_model()
+
+    mismatches = [
+        warning
+        for warning in caught
+        if issubclass(warning.category, InconsistentVersionWarning)
+    ]
+
+    assert not mismatches, (
+        "The active model was trained with a different scikit-learn "
+        "version. Install the pins from constraints.txt before running "
+        "the application."
+    )
 
 
 def test_shipped_bundle_contains_scaler_and_classifier():

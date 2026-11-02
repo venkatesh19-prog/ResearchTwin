@@ -256,6 +256,14 @@ def test_rate_limit_secret_is_required_for_auth_and_readiness(client, monkeypatc
     assert client.get("/ready").status_code == 503
 
 
+def test_rate_limit_secret_minimum_is_32_bytes(monkeypatch):
+    monkeypatch.setenv("RATE_LIMIT_HASH_SECRET", "a" * 31)
+    assert rate_limit.is_rate_limit_configured() is False
+
+    monkeypatch.setenv("RATE_LIMIT_HASH_SECRET", "a" * 32)
+    assert rate_limit.is_rate_limit_configured() is True
+
+
 def test_shared_database_requirement_fails_closed_on_sqlite(client, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_REQUIRE_SHARED_DATABASE", "true")
     assert client.get("/ready").status_code == 503
