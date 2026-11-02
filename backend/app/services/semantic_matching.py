@@ -1,3 +1,4 @@
+import hashlib
 import os
 import threading
 
@@ -19,18 +20,43 @@ TOKENIZER_PATH = os.path.join(MODEL_DIR, "tokenizer.json")
 
 MAX_SEQUENCE_LENGTH = 256
 EMBED_BATCH_SIZE = 8
+ONNX_INTRA_OP_THREADS = 1
+
+# Pinned by scripts/fetch_embedding_model.py from the recorded Hugging Face
+# revision. Readiness re-hashes the installed files against these values.
+EXPECTED_FILE_SHA256 = {
+    "model.onnx": "6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452",
+    "tokenizer.json": "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+}
+
+_verification_lock = threading.Lock()
+_verified_signature = None
 
 
 class SemanticMatchingError(RuntimeError):
     """Raised when the embedding model cannot be loaded or used."""
 
 
-def verify_model_files():
-    missing = [
-        path
+def _file_sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verification_signature():
+    return tuple(
+        (path, os.stat(path).st_size, os.stat(path).st_mtime_ns)
         for path in (MODEL_PATH, TOKENIZER_PATH)
-        if not os.path.exists(path)
-    ]
+    )
+
+
+def verify_model_files():
+    global _verified_signature
+
+    files = {"model.onnx": MODEL_PATH, "tokenizer.json": TOKENIZER_PATH}
+    missing = [path for path in files.values() if not os.path.exists(path)]
 
     if missing:
         raise SemanticMatchingError(
@@ -38,6 +64,35 @@ def verify_model_files():
             + ", ".join(missing)
             + ". Run python scripts/fetch_embedding_model.py."
         )
+
+    try:
+        signature = _verification_signature()
+    except OSError as exc:
+        raise SemanticMatchingError(
+            f"Could not inspect the semantic embedding model files: {exc}"
+        ) from exc
+
+    if signature == _verified_signature:
+        return
+
+    with _verification_lock:
+        if signature == _verified_signature:
+            return
+
+        for name, path in files.items():
+            try:
+                actual = _file_sha256(path)
+            except OSError as exc:
+                raise SemanticMatchingError(
+                    f"Could not read the semantic embedding file '{name}': {exc}"
+                ) from exc
+            if actual != EXPECTED_FILE_SHA256[name]:
+                raise SemanticMatchingError(
+                    f"Semantic embedding file '{name}' failed its SHA-256 "
+                    "integrity check"
+                )
+
+        _verified_signature = signature
 
 
 class OnnxTextEmbedder:
@@ -60,8 +115,11 @@ class OnnxTextEmbedder:
         self._tokenizer = Tokenizer.from_file(tokenizer_path)
         self._tokenizer.enable_truncation(max_length=MAX_SEQUENCE_LENGTH)
         self._tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")
+        session_options = ort.SessionOptions()
+        session_options.intra_op_num_threads = ONNX_INTRA_OP_THREADS
         self._session = ort.InferenceSession(
             model_path,
+            sess_options=session_options,
             providers=["CPUExecutionProvider"],
         )
         self._input_names = {

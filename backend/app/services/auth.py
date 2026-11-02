@@ -69,7 +69,9 @@ def session_ttl_seconds() -> int:
     return value if value > 0 else DEFAULT_SESSION_TTL_SECONDS
 
 
-def create_session(db: Session, user: User) -> tuple[str, int]:
+def create_session(
+    db: Session, user: User, *, commit: bool = True
+) -> tuple[str, int]:
     token = secrets.token_urlsafe(TOKEN_BYTES)
     now = int(time.time())
     expires_at = now + session_ttl_seconds()
@@ -82,7 +84,8 @@ def create_session(db: Session, user: User) -> tuple[str, int]:
             expires_at=expires_at,
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
 
     return token, expires_at
 
@@ -106,7 +109,10 @@ def get_active_session(db: Session, token: str) -> AuthSession | None:
     return session
 
 
-def revoke_session(db: Session, session: AuthSession) -> None:
+def revoke_session(
+    db: Session, session: AuthSession, *, commit: bool = True
+) -> None:
     if session.revoked_at is None:
         session.revoked_at = int(time.time())
-        db.commit()
+        if commit:
+            db.commit()

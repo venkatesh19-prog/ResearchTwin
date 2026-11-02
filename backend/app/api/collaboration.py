@@ -19,6 +19,7 @@ from ..schemas import (
     CollaborationRequestCreate,
     FacultyResearcherLinkCreate,
 )
+from ..services.audit import record_event
 from ..services.rate_limit import (
     RECOMMENDATION_MAX,
     RECOMMENDATION_WINDOW_SECONDS,
@@ -221,6 +222,14 @@ def assign_faculty_researcher_link(
         researcher_id=researcher.id,
         created_at=int(time.time()),
     ))
+    record_event(
+        db,
+        actor=user,
+        action="faculty_link.assign",
+        target_type="faculty_user",
+        target_id=faculty_user_id,
+        detail={"researcher_id": researcher.id},
+    )
     try:
         db.commit()
     except IntegrityError as exc:
@@ -231,6 +240,35 @@ def assign_faculty_researcher_link(
         ) from exc
 
     return {"linked": True, "researcher": _researcher_brief(researcher)}
+
+
+@router.delete("/admin/faculty/{faculty_user_id}/researcher-link")
+def remove_faculty_researcher_link(
+    faculty_user_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    link = _link_for(db, faculty_user_id)
+
+    if link is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No researcher link exists for that faculty account",
+        )
+
+    researcher_id = link.researcher_id
+    db.delete(link)
+    record_event(
+        db,
+        actor=user,
+        action="faculty_link.remove",
+        target_type="faculty_user",
+        target_id=faculty_user_id,
+        detail={"researcher_id": researcher_id},
+    )
+    db.commit()
+
+    return {"linked": False}
 
 
 # --------------------------------------------------
@@ -363,6 +401,18 @@ def decide_collaboration_request(
     if result.rowcount != 1:
         db.rollback()
         raise HTTPException(status_code=409, detail="This request has already been reviewed")
+
+    record_event(
+        db,
+        actor=user,
+        action="collaboration.decision",
+        target_type="collaboration_request",
+        target_id=request_id,
+        detail={
+            "decision": payload.decision,
+            "researcher_id": link.researcher_id,
+        },
+    )
     db.commit()
     db.refresh(record)
 

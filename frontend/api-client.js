@@ -30,12 +30,32 @@
         return fallback;
     }
 
-    function createApi(options = {}) {
-        const baseUrl = String(
-            options.baseUrl ||
+    function resolveBaseUrl(options, global) {
+        const raw = options.baseUrl ||
             (global && global.RESEARCHTWIN_API_BASE) ||
-            "http://127.0.0.1:8000"
-        ).replace(/\/+$/, "");
+            "";
+        if (!raw) return "";
+
+        let parsed;
+        try {
+            parsed = new URL(String(raw).trim());
+        } catch {
+            return "";
+        }
+
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "";
+        if (parsed.username || parsed.password) return "";
+        if (parsed.search || parsed.hash) return "";
+        if (parsed.pathname.replace(/\/+$/, "") !== "") return "";
+
+        const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+        if (parsed.protocol === "http:" && !loopback) return "";
+
+        return parsed.origin;
+    }
+
+    function createApi(options = {}) {
+        const baseUrl = resolveBaseUrl(options, global);
 
         let storage;
         try {
@@ -98,6 +118,13 @@
                 timeoutMs,
                 notifyUnauthorized = true,
             } = requestOptions;
+
+            if (!baseUrl) {
+                throw new ApiError(
+                    "The API endpoint is not configured for this deployment.",
+                    { kind: "configuration" }
+                );
+            }
 
             if (typeof fetchImpl !== "function") {
                 throw new ApiError("This browser cannot reach the API.", {
@@ -332,6 +359,66 @@
             );
         }
 
+        function withQuery(path, filters) {
+            const query = Object.entries(filters || {})
+                .filter(([, value]) => value !== undefined && value !== null && value !== "")
+                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+                .join("&");
+            return query ? `${path}?${query}` : path;
+        }
+
+        function listUsers(filters) {
+            return request(withQuery("/admin/users", filters));
+        }
+
+        function setUserActive(userId, active) {
+            return request(`/admin/users/${encodeURIComponent(userId)}/active`, {
+                method: "PUT",
+                body: { active },
+            });
+        }
+
+        function setUserRole(userId, role) {
+            return request(`/admin/users/${encodeURIComponent(userId)}/role`, {
+                method: "PUT",
+                body: { role },
+            });
+        }
+
+        function revokeUserSessions(userId) {
+            return request(`/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, {
+                method: "POST",
+            });
+        }
+
+        function resetUserPassword(userId, password) {
+            return request(`/admin/users/${encodeURIComponent(userId)}/password-reset`, {
+                method: "POST",
+                body: { password },
+            });
+        }
+
+        function exportUserData(userId) {
+            return request(`/admin/users/${encodeURIComponent(userId)}/data-export`);
+        }
+
+        function listAuditEvents(filters) {
+            return request(withQuery("/admin/audit-events", filters));
+        }
+
+        function assignFacultyResearcherLink(facultyUserId, researcherId) {
+            return request(`/admin/faculty/${encodeURIComponent(facultyUserId)}/researcher-link`, {
+                method: "PUT",
+                body: { researcher_id: researcherId },
+            });
+        }
+
+        function removeFacultyResearcherLink(facultyUserId) {
+            return request(`/admin/faculty/${encodeURIComponent(facultyUserId)}/researcher-link`, {
+                method: "DELETE",
+            });
+        }
+
         return {
             baseUrl,
             login,
@@ -352,6 +439,15 @@
             setFacultyResearcherLink,
             listFacultyCollaborationRequests,
             decideCollaborationRequest,
+            listUsers,
+            setUserActive,
+            setUserRole,
+            revokeUserSessions,
+            resetUserPassword,
+            exportUserData,
+            listAuditEvents,
+            assignFacultyResearcherLink,
+            removeFacultyResearcherLink,
             clearSession,
             hasSession: () => Boolean(getToken()),
             setUnauthorizedHandler,

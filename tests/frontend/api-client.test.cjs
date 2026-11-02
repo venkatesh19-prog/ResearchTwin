@@ -7,7 +7,7 @@ const { createApi, ApiError } = require("../../frontend/api-client.js");
 const apiClientSource = readFileSync(require.resolve("../../frontend/api-client.js"), "utf8");
 
 function loadBrowserApi(window) {
-  vm.runInNewContext(apiClientSource, { window, AbortController, setTimeout, clearTimeout });
+  vm.runInNewContext(apiClientSource, { window, URL, AbortController, setTimeout, clearTimeout });
   return window.ResearchTwinAPI;
 }
 
@@ -622,6 +622,7 @@ for (const storageMode of ["throwing getter", "absent"]) {
   test(`browser initialization uses memory when sessionStorage is ${storageMode}`, async () => {
     let authorization;
     const window = {
+      RESEARCHTWIN_API_BASE: "https://api.example.test",
       fetch: async (url, options) => {
         authorization = options.headers.Authorization;
         return jsonResponse(200, { access_token: "memory-token" });
@@ -648,6 +649,7 @@ test("browser initialization still defaults to sessionStorage and stores only to
   const storage = memoryStorage({ "researchtwin.sessionToken": "existing-token" });
   let authorization;
   const window = {
+    RESEARCHTWIN_API_BASE: "https://api.example.test",
     sessionStorage: storage,
     async fetch(url, options) {
       assert.equal(this, window);
@@ -666,7 +668,12 @@ test("browser initialization still defaults to sessionStorage and stores only to
 
 test("missing global fetch does not crash initialization and reports a network error", async () => {
   let api;
-  assert.doesNotThrow(() => { api = loadBrowserApi({ sessionStorage: memoryStorage() }); });
+  assert.doesNotThrow(() => {
+    api = loadBrowserApi({
+      RESEARCHTWIN_API_BASE: "https://api.example.test",
+      sessionStorage: memoryStorage(),
+    });
+  });
   await assert.rejects(api.getResearchers(), (error) => {
     assert.equal(error.kind, "network");
     assert.match(error.message, /cannot reach/i);
@@ -745,3 +752,130 @@ for (const status of [200, 503]) {
     assert.equal(unauthorized(), 0);
   });
 }
+
+// ------------------------------------------------------------------
+// API endpoint configuration
+// ------------------------------------------------------------------
+
+const configSource = readFileSync(
+  require.resolve("../../frontend/frontend-config.js"),
+  "utf8"
+);
+
+test("configured bases are validated and normalized to an origin", () => {
+  for (const [configured, expected] of [
+    ["https://api.example.test/", "https://api.example.test"],
+    ["https://api.example.test///", "https://api.example.test"],
+    ["http://127.0.0.1:8000", "http://127.0.0.1:8000"],
+    ["http://localhost:8000/", "http://localhost:8000"],
+  ]) {
+    const api = createApi({ baseUrl: configured, fetchImpl: async () => {} });
+    assert.equal(api.baseUrl, expected, configured);
+  }
+});
+
+test("invalid API configuration fails closed without issuing a request", async () => {
+  for (const baseUrl of [
+    "http://api.example.test",
+    "https://api.example.test/v1",
+    "https://user:secret@api.example.test",
+    "ftp://api.example.test",
+    "javascript:alert(1)",
+    "not a url",
+    "",
+  ]) {
+    let called = false;
+    const api = createApi({
+      baseUrl,
+      fetchImpl: async () => {
+        called = true;
+        throw new Error("fetch must not run");
+      },
+    });
+
+    assert.equal(api.baseUrl, "", baseUrl);
+    await assert.rejects(api.getResearchers(), (error) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.kind, "configuration");
+      return true;
+    });
+    assert.equal(called, false, baseUrl);
+  }
+});
+
+test("a deployment with no configuration fails closed", async () => {
+  delete globalThis.RESEARCHTWIN_API_BASE;
+  const api = createApi({
+    fetchImpl: async () => {
+      throw new Error("fetch must not run");
+    },
+  });
+
+  assert.equal(api.baseUrl, "");
+  await assert.rejects(
+    api.me(),
+    (error) => error instanceof ApiError && error.kind === "configuration"
+  );
+});
+
+test("the production host reaches the reviewed Render endpoint", () => {
+  const window = {
+    location: { hostname: "starlit-empanada-a323e3.netlify.app" },
+  };
+  vm.runInNewContext(configSource, { window });
+
+  const api = loadBrowserApi(window);
+
+  assert.equal(api.baseUrl, "https://researchtwin-api.onrender.com");
+});
+
+test("an unknown deployment host cannot reach any API", async () => {
+  const window = { location: { hostname: "preview.example.test" } };
+  vm.runInNewContext(configSource, { window });
+
+  const api = loadBrowserApi(window);
+
+  assert.equal(api.baseUrl, "");
+  await assert.rejects(api.getResearchers(), (error) => {
+    assert.equal(error.name, "ApiError");
+    assert.equal(error.kind, "configuration");
+    return true;
+  });
+});
+
+test("admin endpoints use the documented paths, methods, and query encoding", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, method: options.method, body: options.body });
+    return jsonResponse(200, url.includes("/data-export") ? { generated_at: 1 } : []);
+  };
+  const { api } = makeApi(fetchImpl, {
+    storage: memoryStorage({ "researchtwin.sessionToken": "admin-token" }),
+  });
+
+  await api.listUsers({ role: "faculty", active: "true", limit: 200 });
+  await api.setUserActive(7, false);
+  await api.setUserRole(7, "faculty");
+  await api.revokeUserSessions(7);
+  await api.resetUserPassword(7, "a-long-enough-password");
+  await api.exportUserData(7);
+  await api.listAuditEvents({ action: "auth.login_failed", target_type: "user", target_id: 7 });
+  await api.assignFacultyResearcherLink(7, 12);
+  await api.removeFacultyResearcherLink(7);
+
+  assert.deepEqual(calls.map(call => [call.method, call.url]), [
+    ["GET", "https://api.example.test/admin/users?role=faculty&active=true&limit=200"],
+    ["PUT", "https://api.example.test/admin/users/7/active"],
+    ["PUT", "https://api.example.test/admin/users/7/role"],
+    ["POST", "https://api.example.test/admin/users/7/sessions/revoke"],
+    ["POST", "https://api.example.test/admin/users/7/password-reset"],
+    ["GET", "https://api.example.test/admin/users/7/data-export"],
+    ["GET", "https://api.example.test/admin/audit-events?action=auth.login_failed&target_type=user&target_id=7"],
+    ["PUT", "https://api.example.test/admin/faculty/7/researcher-link"],
+    ["DELETE", "https://api.example.test/admin/faculty/7/researcher-link"],
+  ]);
+  assert.deepEqual(JSON.parse(calls[1].body), { active: false });
+  assert.deepEqual(JSON.parse(calls[2].body), { role: "faculty" });
+  assert.deepEqual(JSON.parse(calls[4].body), { password: "a-long-enough-password" });
+  assert.deepEqual(JSON.parse(calls[7].body), { researcher_id: 12 });
+});

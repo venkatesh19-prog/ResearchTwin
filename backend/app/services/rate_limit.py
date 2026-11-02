@@ -51,21 +51,56 @@ def is_rate_limit_ready(db: Session) -> bool:
     return True
 
 
-def client_ip_identity(request: Request) -> str:
-    """Return a normalized client IP without trusting arbitrary forwarded headers."""
-    if os.getenv("RATE_LIMIT_TRUST_CF_CONNECTING_IP", "").lower() == "true":
-        candidate = request.headers.get("cf-connecting-ip", "").strip()
+def _trusted_proxy_networks() -> tuple:
+    """Explicitly configured proxy networks; empty means no proxy is trusted."""
+    networks = []
+    for item in os.getenv("RATE_LIMIT_TRUSTED_PROXY_CIDRS", "").split(","):
+        item = item.strip()
+        if not item:
+            continue
         try:
-            return ipaddress.ip_address(candidate).compressed
+            networks.append(ipaddress.ip_network(item, strict=False))
         except ValueError:
-            pass
+            continue
+    return tuple(networks)
 
+
+def _is_trusted_proxy(peer: str, networks: tuple) -> bool:
+    try:
+        address = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(address in network for network in networks)
+
+
+def client_ip_identity(request: Request) -> str:
+    """Return the client IP without trusting client-supplied forwarding headers.
+
+    A forwarding header is honored only when the operator both enables
+    ``RATE_LIMIT_TRUST_CF_CONNECTING_IP`` and lists the proxy peer in
+    ``RATE_LIMIT_TRUSTED_PROXY_CIDRS``. With no explicit proxy configuration
+    the direct peer address is always used, so a spoofed header cannot rotate
+    the per-IP rate-limit bucket.
+    """
     client = request.client
-    candidate = client.host.strip() if client and client.host else "unknown"
+    peer = client.host.strip() if client and client.host else "unknown"
+    try:
+        peer = ipaddress.ip_address(peer).compressed
+    except ValueError:
+        peer = peer[:255] or "unknown"
+
+    if os.getenv("RATE_LIMIT_TRUST_CF_CONNECTING_IP", "").lower() != "true":
+        return peer
+
+    networks = _trusted_proxy_networks()
+    if not networks or not _is_trusted_proxy(peer, networks):
+        return peer
+
+    candidate = request.headers.get("cf-connecting-ip", "").strip()
     try:
         return ipaddress.ip_address(candidate).compressed
     except ValueError:
-        return candidate[:255] or "unknown"
+        return peer
 
 
 def _bucket_hash(scope: str, principal_kind: str, principal: str) -> str:

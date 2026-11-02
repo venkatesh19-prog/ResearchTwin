@@ -1,5 +1,7 @@
 """HTTP contract tests for /recommendations."""
 
+import threading
+
 import pytest
 
 from app.services import recommendation, semantic_matching
@@ -184,6 +186,25 @@ def test_model_failure_maps_to_503(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Recommendation service unavailable"
+
+
+def test_capacity_exhaustion_maps_to_503_with_retry_after(
+    client, seeded_db, patch_semantic, monkeypatch
+):
+    patch_semantic()
+    headers = _student_headers_with_profile(client)
+    monkeypatch.setattr(
+        recommendation, "_recommendation_slots", threading.BoundedSemaphore(1)
+    )
+
+    with recommendation.recommendation_slot():
+        response = client.post(ENDPOINT, json=STUDENT_PROFILE, headers=headers)
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == str(
+        recommendation.RECOMMENDATION_RETRY_AFTER_SECONDS
+    )
+    assert "capacity" in response.json()["detail"].lower()
 
 
 def test_roadmap_requires_authentication(client):

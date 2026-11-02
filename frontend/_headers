@@ -1,0 +1,12 @@
+# Netlify response headers for the static ResearchTwin client.
+# The CSP allows the inline handlers/styles used by researchtwin.html,
+# Font Awesome from cdnjs, the LPU ranking banner image on index.html,
+# and the configured ResearchTwin API origins.
+# Update connect-src if frontend-config.js points at another API origin.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' data: https://cdnjs.cloudflare.com; img-src 'self' data: https://www.lpu.in; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://researchtwin-api.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

@@ -2,7 +2,37 @@
 
 import os
 
+from starlette.datastructures import MutableHeaders
 from starlette.responses import JSONResponse
+
+
+class SecurityHeadersMiddleware:
+    """Apply conservative response headers to every API response."""
+
+    HEADERS = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    }
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for name, value in self.HEADERS.items():
+                    headers.setdefault(name, value)
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 def _max_request_bytes() -> int:

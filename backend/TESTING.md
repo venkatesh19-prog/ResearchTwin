@@ -163,9 +163,10 @@ at ~644 MB, which exceeded the 512 MB Render Free limit.
 The limiter uses atomic database upserts and is shared across instances only
 when they use the same PostgreSQL database. Render configuration sets
 `RATE_LIMIT_REQUIRE_SHARED_DATABASE=true`,
-`RATE_LIMIT_TRUST_CF_CONNECTING_IP=true`, and limits of 5 registrations/IP+email
-per hour, 10 logins/IP+email per 15 minutes, and 8 recommendations/IP+student
-per 5 minutes. Configure `RATE_LIMIT_HASH_SECRET` in Render with a generated
+`RATE_LIMIT_TRUST_CF_CONNECTING_IP=false` (the header is honored only when trust
+is enabled *and* the peer matches `RATE_LIMIT_TRUSTED_PROXY_CIDRS`), and limits
+of 5 registrations/IP+email per hour, 10 logins/IP+email per 15 minutes, and 8
+recommendations/IP+student per 5 minutes. Configure `RATE_LIMIT_HASH_SECRET` in Render with a generated
 random secret of at least 32 bytes; it is deliberately not committed. Render's
 health check uses `/ready`. Live Render settings were not inspected, so deployed
 limiter status remains unverified. Local SQLite tests do not prove

@@ -63,6 +63,28 @@ class AuthSession(Base):
     revoked_at = Column(Integer, nullable=True)
 
 
+class AuditEvent(Base):
+    """One administrative or collaboration action, kept for accountability.
+
+    ``detail`` holds a small JSON object with non-secret context only.
+    """
+
+    __tablename__ = "audit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    action = Column(String(64), nullable=False, index=True)
+    target_type = Column(String(32), nullable=False, index=True)
+    target_id = Column(Integer, nullable=True, index=True)
+    detail = Column(Text, nullable=False, default="")
+    created_at = Column(Integer, nullable=False, index=True)
+
+
 class RateLimitCounter(Base):
     __tablename__ = "rate_limit_counters"
 

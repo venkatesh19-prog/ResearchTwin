@@ -1,36 +1,13 @@
-import os
+from functools import lru_cache
+from pathlib import Path
 
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-DEFAULT_DATABASE_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "researchtwin.db")
-)
+from .db_url import resolve_database_url
 
-
-def resolve_database_url(raw_url: str | None = None) -> str:
-    """Normalize a database URL for SQLAlchemy.
-
-    Render exposes PostgreSQL URLs with the legacy ``postgres://`` scheme
-    (or ``postgresql://``); both must be routed through psycopg 3, whose
-    SQLAlchemy dialect is ``postgresql+psycopg``. Any other value, including
-    an explicit SQLite URL, is returned unchanged.
-    """
-
-    url = (raw_url if raw_url is not None else os.getenv("DATABASE_URL")) or ""
-    url = url.strip()
-
-    if not url:
-        return "sqlite:///" + DEFAULT_DATABASE_PATH.replace("\\", "/")
-
-    if url.startswith("postgres://"):
-        return "postgresql+psycopg://" + url[len("postgres://"):]
-
-    if url.startswith("postgresql://"):
-        return "postgresql+psycopg://" + url[len("postgresql://"):]
-
-    return url
-
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 DATABASE_URL = resolve_database_url()
 
@@ -48,6 +25,49 @@ if engine.dialect.name == "sqlite":
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+
+class SchemaRevisionError(RuntimeError):
+    """The database cannot prove it is at the reviewed Alembic revision."""
+
+
+@lru_cache(maxsize=1)
+def expected_schema_revision() -> str:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    head = ScriptDirectory.from_config(config).get_current_head()
+    if not head:
+        raise SchemaRevisionError("No Alembic head revision is available")
+    return head
+
+
+def verify_schema_revision(db: Session) -> None:
+    """Require PostgreSQL to be stamped at the reviewed migration head.
+
+    SQLite keeps ``create_all`` for local development and tests, so it is not
+    subjected to the Alembic revision requirement. Migrations are never run
+    automatically here.
+    """
+    if db.get_bind().dialect.name != "postgresql":
+        return
+
+    try:
+        current = db.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise SchemaRevisionError("Database migration state is unavailable") from exc
+
+    expected = expected_schema_revision()
+    if current != expected:
+        raise SchemaRevisionError(
+            "Database is not at the reviewed migration head; apply reviewed "
+            "Alembic migrations before serving traffic"
+        )
+
 
 def get_db():
     db = SessionLocal()

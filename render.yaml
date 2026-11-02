@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt -c constraints.txt && python scripts/fetch_embedding_model.py
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /ready
     envVars:
       - key: PYTHON_VERSION
@@ -15,8 +15,12 @@ services:
         sync: false
       - key: RATE_LIMIT_HASH_SECRET
         sync: false
+      # Only enable this together with an explicit RATE_LIMIT_TRUSTED_PROXY_CIDRS
+      # allowlist for the actual edge proxy; otherwise clients can spoof the header.
       - key: RATE_LIMIT_TRUST_CF_CONNECTING_IP
-        value: "true"
+        value: "false"
+      - key: RATE_LIMIT_TRUSTED_PROXY_CIDRS
+        sync: false
       - key: RATE_LIMIT_REQUIRE_SHARED_DATABASE
         value: "true"
       - key: RATE_LIMIT_REGISTER_MAX
@@ -33,3 +37,5 @@ services:
         value: "300"
       - key: MAX_REQUEST_BODY_BYTES
         value: "65536"
+      - key: RECOMMENDATION_MAX_CONCURRENCY
+        value: "2"

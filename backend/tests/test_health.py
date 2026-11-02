@@ -172,3 +172,19 @@ def test_readiness_fails_when_embedding_model_files_are_missing(
 
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
+
+
+def test_readiness_fails_when_the_embedding_model_is_corrupt(
+    client, monkeypatch, tmp_path
+):
+    from app.services import semantic_matching
+
+    corrupt = tmp_path / "model.onnx"
+    corrupt.write_bytes(b"not the pinned model")
+    monkeypatch.setattr(semantic_matching, "MODEL_PATH", str(corrupt))
+    semantic_matching._verified_signature = None
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}

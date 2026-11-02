@@ -14,6 +14,7 @@ const DATABASE_URL = process.env.RT_PHASE3_DATABASE_URL || "";
 const PYTHON = process.env.RT_PHASE3_PYTHON || "python";
 const ARTIFACT_DIR = process.env.RT_PHASE3_ARTIFACT_DIR || path.join(os.tmpdir(), "researchtwin-phase3-artifacts");
 const PASSWORD = "ResearchTwin E2E Password 2026!";
+const RESET_PASSWORD = "ResearchTwin Reset Password 2026!";
 const ADMIN_EMAIL = process.env.RT_PHASE3_ADMIN_EMAIL || "";
 const ADMIN_PASSWORD = process.env.RT_PHASE3_ADMIN_PASSWORD || "";
 const ID = randomUUID().slice(0, 12);
@@ -54,10 +55,14 @@ async function signOut(page) {
 }
 
 async function signIn(page, email) {
+    return signInWithPassword(page, email, PASSWORD);
+}
+
+async function signInWithPassword(page, email, password) {
     await expectVisible(page.locator("#authShell:not(.hidden)"));
     await page.locator("#tabLogin").click();
     await page.locator("#loginEmail").fill(email);
-    await page.locator("#loginPassword").fill(PASSWORD);
+    await page.locator("#loginPassword").fill(password);
     await page.locator("#loginBtn").click();
     await expectVisible(page.locator("#appSidebar:not(.hidden)"), 30000);
 }
@@ -500,6 +505,146 @@ async function main() {
         await secondPage.locator('#navMenu a[data-view="requestsView"]').click();
         await secondPage.locator("#requestsList .status-rejected").waitFor({ state: "visible" });
         journeyResults.push("faculty profile/link/inbox, accept/reject decisions, and resulting student statuses");
+
+        // Administrator console: account lifecycle, faculty linking, audit and export.
+        const student3 = {
+            name: `E2E Student Three ${ID}`,
+            email: `e2e-student-three-${ID}@example.test`,
+            role: "student",
+        };
+        const student3Page = await context.newPage();
+        recordPage(student3Page);
+        await register(student3Page, student3);
+        await signOut(student3Page);
+
+        const adminPage = await context.newPage();
+        recordPage(adminPage);
+        await openAuth(adminPage);
+        await signInWithPassword(adminPage, ADMIN_EMAIL, ADMIN_PASSWORD);
+        assert.match(await adminPage.locator("#userChip").innerText(), /Administrator/);
+        await adminPage.locator('#navMenu a[data-view="adminUsersView"]').click();
+        await adminPage.waitForFunction(() =>
+            /accounts? loaded/i.test(document.querySelector("#adminUsersStatus")?.innerText || ""),
+            undefined, { timeout: 30000 });
+        await adminPage.locator("#adminUsersList").getByText(student3.email, { exact: false })
+            .waitFor({ state: "visible" });
+
+        const accountList = await (await api.get("/admin/users?role=student&limit=200", {
+            headers: adminHeaders,
+        })).json();
+        const student3Account = accountList.find(item => item.email === student3.email);
+        assert.ok(student3Account, "registered student should appear in the admin account list");
+        const student3Row = adminPage.locator(
+            `#adminUsersList [data-admin-user="${student3Account.id}"]`
+        );
+        assert.equal(await adminPage.locator(`#adminRole-${student3Account.id}`).count(), 1,
+            "another account should expose role controls");
+
+        await student3Row.getByRole("button", { name: "Export data" }).click();
+        await adminPage.waitForFunction(id => {
+            const detail = document.querySelector(`#adminUserDetail-${id}`);
+            return detail && /Download JSON/.test(detail.innerText) && /"account"/.test(detail.innerText);
+        }, student3Account.id, { timeout: 30000 });
+
+        await student3Row.getByRole("button", { name: "Deactivate" }).click();
+        await adminPage.waitForFunction(id =>
+            /deactivated/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            student3Account.id, { timeout: 30000 });
+        const deactivatedLogin = await api.post("/auth/login", {
+            data: { email: student3.email, password: PASSWORD },
+        });
+        assert.equal(deactivatedLogin.status(), 403, "a deactivated account must not sign in");
+
+        await student3Row.getByRole("button", { name: "Activate" }).click();
+        await adminPage.waitForFunction(id =>
+            /activated/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            student3Account.id, { timeout: 30000 });
+        const reactivatedLogin = await api.post("/auth/login", {
+            data: { email: student3.email, password: PASSWORD },
+        });
+        assert.equal(reactivatedLogin.status(), 200, "a reactivated account must sign in again");
+
+        await adminPage.locator(`#adminRole-${student3Account.id}`).selectOption("faculty");
+        await student3Row.getByRole("button", { name: "Change role" }).click();
+        await adminPage.waitForFunction(id =>
+            /role changed to faculty/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            student3Account.id, { timeout: 30000 });
+        const facultyRoleList = await (await api.get("/admin/users?role=faculty&limit=200", {
+            headers: adminHeaders,
+        })).json();
+        assert.ok(facultyRoleList.some(item => item.id === student3Account.id),
+            "role change should be persisted by the API");
+
+        await adminPage.locator(`#adminRole-${student3Account.id}`).selectOption("student");
+        await student3Row.getByRole("button", { name: "Change role" }).click();
+        await adminPage.waitForFunction(id =>
+            /role changed to student/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            student3Account.id, { timeout: 30000 });
+
+        await adminPage.locator(`#adminPassword-${student3Account.id}`).fill(RESET_PASSWORD);
+        await student3Row.getByRole("button", { name: "Reset password" }).click();
+        await adminPage.waitForFunction(id =>
+            /password updated/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            student3Account.id, { timeout: 30000 });
+        const resetLogin = await api.post("/auth/login", {
+            data: { email: student3.email, password: RESET_PASSWORD },
+        });
+        assert.equal(resetLogin.status(), 200, "the reset password should authenticate");
+        assert.equal(await adminPage.locator(`#adminPassword-${student3Account.id}`).inputValue(), "",
+            "the reset password field should be cleared after success");
+
+        // Faculty link management through the console.
+        const facultyAccountList = await (await api.get("/admin/users?role=faculty&limit=200", {
+            headers: adminHeaders,
+        })).json();
+        const facultyAccount = facultyAccountList.find(item => item.email === faculty.email);
+        assert.ok(facultyAccount, "the faculty account should be listed for administrators");
+        const facultyRow = adminPage.locator(
+            `#adminUsersList [data-admin-user="${facultyAccount.id}"]`
+        );
+        await facultyRow.getByRole("button", { name: "Remove link" }).click();
+        await adminPage.waitForFunction(id =>
+            /link removed/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            facultyAccount.id, { timeout: 30000 });
+        await facultyPage.locator("#refreshInboxBtn").click();
+        await facultyPage.locator("#linkPanel").getByText(/not linked/i)
+            .waitFor({ state: "visible", timeout: 30000 });
+
+        await facultyRow.locator(`#adminLinkResearcher-${facultyAccount.id}`)
+            .selectOption(String(researcherId));
+        await facultyRow.getByRole("button", { name: "Assign link" }).click();
+        await adminPage.waitForFunction(id =>
+            /linked to/i.test(document.querySelector(`#adminUserStatus-${id}`)?.innerText || ""),
+            facultyAccount.id, { timeout: 30000 });
+        await facultyPage.locator("#refreshInboxBtn").click();
+        await facultyPage.locator("#linkResults").getByText(researcherName, { exact: false })
+            .waitFor({ state: "visible", timeout: 30000 });
+
+        // Audit log filtering and rendering.
+        await adminPage.locator('#navMenu a[data-view="adminAuditView"]').click();
+        await adminPage.waitForFunction(() =>
+            /events? loaded/i.test(document.querySelector("#adminAuditStatus")?.innerText || ""),
+            undefined, { timeout: 30000 });
+        await adminPage.locator("#adminAuditAction").fill("faculty_link.assign");
+        const auditResponse = adminPage.waitForResponse(response =>
+            response.url().includes("/admin/audit-events") &&
+            response.url().includes("action=faculty_link.assign") &&
+            response.status() === 200, { timeout: 30000 });
+        await adminPage.locator("#refreshAuditBtn").click();
+        await auditResponse;
+        await adminPage.locator("#adminAuditList .request-item").first()
+            .getByText("faculty_link.assign", { exact: false })
+            .waitFor({ state: "visible", timeout: 30000 });
+
+        // A student cannot use the administrator API or console.
+        await studentPage.evaluate(() => switchView("adminUsersView"));
+        await studentPage.waitForFunction(() =>
+            /permission/i.test(document.querySelector("#adminUsersStatus")?.innerText || ""),
+            undefined, { timeout: 30000 });
+        journeyResults.push(
+            "admin console account lifecycle, faculty link management, audit and export," +
+            " and student denial of the admin API"
+        );
 
         // Expired token is rejected in the real browser and returns the user to sign-in.
         await expireUserSessions(student2.email);

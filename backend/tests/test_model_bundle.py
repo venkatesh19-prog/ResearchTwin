@@ -60,6 +60,18 @@ def test_shipped_bundle_uses_expected_features():
     assert bundle["model_version"] == "researchtwin-logistic-v2-7features"
 
 
+def test_evaluation_recipe_matches_the_served_bundle():
+    import evaluate_grouped_ranking as evaluation
+
+    features, params = evaluation.training_recipe()
+    bundle = recommendation.load_model()
+    classifier = bundle["model"].named_steps["classifier"]
+
+    assert features == list(recommendation.EXPECTED_FEATURES)
+    for key, value in params.items():
+        assert classifier.get_params()[key] == value
+
+
 def test_shipped_bundle_loads_without_runtime_version_warnings():
     from sklearn.exceptions import InconsistentVersionWarning
 

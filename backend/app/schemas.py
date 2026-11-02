@@ -220,3 +220,65 @@ class CollaborationRequestResponse(BaseModel):
     created_at: int
     updated_at: int
     reviewed_at: Optional[int] = None
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    created_at: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AccountStatusUpdate(BaseModel):
+    active: bool
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AccountRoleUpdate(BaseModel):
+    role: Literal["student", "faculty", "admin"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AdminPasswordReset(BaseModel):
+    password: str = Field(min_length=12, max_length=128)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("password")
+    @classmethod
+    def reject_blank_password(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Password is required")
+        return value
+
+
+class AuditEventResponse(BaseModel):
+    id: int
+    actor_user_id: Optional[int] = None
+    actor_email: Optional[str] = None
+    action: str
+    target_type: str
+    target_id: Optional[int] = None
+    detail: str
+    created_at: int
+
+
+class AccountDataExport(BaseModel):
+    """One account's personal data, without credential or token material."""
+
+    generated_at: int
+    account: AdminUserResponse
+    student_profile: Optional[dict] = None
+    faculty_profile: Optional[dict] = None
+    faculty_link: Optional[dict] = None
+    collaboration_requests: list[dict]
+    faculty_inbox: list[dict]
+    roadmap_progress: list[dict]
+    sessions: dict
+    audit_events: list[dict]

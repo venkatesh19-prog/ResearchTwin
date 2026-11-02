@@ -874,6 +874,71 @@
             </div>
         </div>
 
+        <!-- ADMIN: ACCOUNT MANAGEMENT -->
+        <div id="adminUsersView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-users-gear"></i> Account Management</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Administrative actions are recorded in the audit log. Role and status changes revoke
+                    the affected account's active sessions.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:15px;">
+                    <div style="min-width:200px;">
+                        <label class="field-label" for="adminRoleFilter">Role</label>
+                        <select id="adminRoleFilter" onchange="loadAdminUsers()">
+                            <option value="">All roles</option>
+                            <option value="student">Student</option>
+                            <option value="faculty">Faculty / Researcher</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                    <div style="min-width:200px;">
+                        <label class="field-label" for="adminActiveFilter">Status</label>
+                        <select id="adminActiveFilter" onchange="loadAdminUsers()">
+                            <option value="">All statuses</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn" id="refreshAdminUsersBtn" onclick="loadAdminUsers()">
+                        <i class="fa-solid fa-rotate"></i> Refresh Accounts
+                    </button>
+                </div>
+                <p class="status-text" id="adminUsersStatus" role="status"></p>
+                <div id="adminUsersList"></div>
+            </div>
+        </div>
+
+        <!-- ADMIN: AUDIT LOG -->
+        <div id="adminAuditView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-clipboard-list"></i> Audit Log</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Newest events first. The API returns at most 100 events per request; narrow the
+                    filters to find older activity.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:15px;">
+                    <div style="min-width:200px;">
+                        <label class="field-label" for="adminAuditAction">Action</label>
+                        <input type="text" id="adminAuditAction" maxlength="64" placeholder="e.g. auth.login_failed">
+                    </div>
+                    <div style="min-width:180px;">
+                        <label class="field-label" for="adminAuditTargetType">Target type</label>
+                        <input type="text" id="adminAuditTargetType" maxlength="32" placeholder="e.g. user">
+                    </div>
+                    <div style="min-width:140px;">
+                        <label class="field-label" for="adminAuditTargetId">Target ID</label>
+                        <input type="number" id="adminAuditTargetId" min="1" placeholder="e.g. 12">
+                    </div>
+                    <button type="button" class="btn" id="refreshAuditBtn" onclick="loadAdminAudit()">
+                        <i class="fa-solid fa-rotate"></i> Refresh Audit Log
+                    </button>
+                </div>
+                <p class="status-text" id="adminAuditStatus" role="status"></p>
+                <div id="adminAuditList"></div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -929,6 +994,14 @@ const state = {
     refreshRecommendationsNeeded: false,
     inboxFlight: null,
     decisionBusy: false,
+    adminUsers: null,
+    adminUsersSeq: 0,
+    adminUsersFlight: null,
+    adminAudit: null,
+    adminAuditSeq: 0,
+    adminAuditFlight: null,
+    adminBusy: false,
+    adminExports: {},
     authTransition: null,
     epoch: 0
 };
@@ -1029,9 +1102,17 @@ function resetAppState() {
     state.refreshRecommendationsNeeded = false;
     state.inboxFlight = null;
     state.decisionBusy = false;
+    state.adminUsers = null;
+    state.adminUsersSeq += 1;
+    state.adminUsersFlight = null;
+    state.adminAudit = null;
+    state.adminAuditSeq += 1;
+    state.adminAuditFlight = null;
+    state.adminBusy = false;
+    state.adminExports = {};
     setProfileBusy("student", true);
     setProfileBusy("faculty", true);
-    ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn"].forEach(id => setBusy(id, false));
+    ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn", "refreshAdminUsersBtn", "refreshAuditBtn"].forEach(id => setBusy(id, false));
     ["retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn"].forEach(id => { const el = $(id); if (el) el.classList.add("hidden"); });
     const recommendationCount = $("recommendationCount");
     if (recommendationCount) recommendationCount.value = "5";
@@ -1075,8 +1156,18 @@ function resetAppState() {
         const element = $(id);
         if (element) element.innerHTML = "";
     });
+    ["adminUsersList", "adminAuditList"].forEach((id) => {
+        const element = $(id);
+        if (element) element.innerHTML = "";
+    });
+    ["adminRoleFilter", "adminActiveFilter", "adminAuditAction", "adminAuditTargetType", "adminAuditTargetId"].forEach((id) => {
+        const element = $(id);
+        if (element) element.value = "";
+    });
     setStatus("requestsStatus", "");
     setStatus("inboxStatus", "");
+    setStatus("adminUsersStatus", "");
+    setStatus("adminAuditStatus", "");
 }
 
 function showAuth(message, tone = "error") {
@@ -1105,7 +1196,13 @@ function showAuthMode(mode) {
 }
 
 function buildNav(role) {
-    const items = role === "faculty"
+    const items = role === "admin"
+        ? [
+            ["adminUsersView", "fa-users-gear", "Account Management"],
+            ["directoryView", "fa-graduation-cap", "Researcher Directory"],
+            ["adminAuditView", "fa-clipboard-list", "Audit Log"]
+        ]
+        : role === "faculty"
         ? [
             ["facultyProfileView", "fa-id-badge", "Faculty Profile"],
             ["directoryView", "fa-graduation-cap", "Researcher Directory"],
@@ -1142,6 +1239,8 @@ function switchView(viewId) {
     if (viewId === "directoryView") loadDirectory();
     if (viewId === "requestsView") loadMyRequests();
     if (viewId === "inboxView") loadFacultyInbox();
+    if (viewId === "adminUsersView") loadAdminUsers();
+    if (viewId === "adminAuditView") loadAdminAudit();
 }
 
 function enterApp(user) {
@@ -1156,7 +1255,11 @@ function enterApp(user) {
     $("appSidebar").classList.remove("hidden");
     $("appMain").classList.remove("hidden");
 
-    const roleLabel = user.role === "faculty" ? "Faculty / Researcher" : "Student";
+    const roleLabel = user.role === "faculty"
+        ? "Faculty / Researcher"
+        : user.role === "admin"
+            ? "Administrator"
+            : "Student";
     $("userChip").innerHTML =
         `<b>${escapeHTML(user.full_name)}</b><br>` +
         `${escapeHTML(roleLabel)} &middot; ${escapeHTML(user.email)}`;
@@ -1165,6 +1268,8 @@ function enterApp(user) {
 
     if (user.role === "faculty") {
         switchView("facultyProfileView");
+    } else if (user.role === "admin") {
+        switchView("adminUsersView");
     } else {
         switchView("matchView");
         // Profile loading belongs to this session's recommendation flight.
@@ -2359,6 +2464,384 @@ async function loadFacultyInbox() {
         if (error.kind === "unauthorized") return;
         setStatus("inboxStatus", `Could not load requests: ${humanizeError(error)}`, "error");
     }
+}
+
+const ADMIN_ROLES = ["student", "faculty", "admin"];
+const ADMIN_ROLE_LABELS = {
+    student: "Student",
+    faculty: "Faculty / Researcher",
+    admin: "Administrator"
+};
+
+function adminTimestamp(seconds) {
+    return seconds ? new Date(seconds * 1000).toLocaleString() : "Unknown";
+}
+
+function renderAdminUserActions(account, researchers) {
+    if (state.user && state.user.id === account.id) {
+        return `<p style="color:var(--text-sub);font-size:12px;margin:6px 0 0">
+            This is your signed-in account. Use another administrator account to change its lifecycle.
+        </p>`;
+    }
+
+    const roleOptions = ADMIN_ROLES.map(role =>
+        `<option value="${role}"${role === account.role ? " selected" : ""}>` +
+        `${ADMIN_ROLE_LABELS[role]}</option>`
+    ).join("");
+
+    const linkControls = account.role === "faculty"
+        ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+               <select id="adminLinkResearcher-${account.id}" style="max-width:320px;margin-bottom:0;">
+                   <option value="">Select a researcher record…</option>
+                   ${researchers.map(researcher =>
+                       `<option value="${researcher.id}">${escapeHTML(researcher.name || "Researcher")}` +
+                       ` — ${escapeHTML(researcher.department || "No department")}</option>`
+                   ).join("")}
+               </select>
+               <button type="button" class="btn btn-small" onclick="adminAssignLink(${account.id})">Assign link</button>
+               <button type="button" class="btn btn-small btn-secondary" onclick="adminRemoveLink(${account.id})">Remove link</button>
+           </div>`
+        : "";
+
+    return `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+            <button type="button" class="btn btn-small" onclick="adminSetActive(${account.id}, ${account.is_active ? "false" : "true"})">
+                ${account.is_active ? "Deactivate" : "Activate"}
+            </button>
+            <select id="adminRole-${account.id}" style="max-width:200px;margin-bottom:0;">${roleOptions}</select>
+            <button type="button" class="btn btn-small" onclick="adminSetRole(${account.id})">Change role</button>
+            <button type="button" class="btn btn-small btn-secondary" onclick="adminRevokeSessions(${account.id})">Revoke sessions</button>
+            <button type="button" class="btn btn-small btn-secondary" onclick="adminExportData(${account.id})">Export data</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+            <input type="password" id="adminPassword-${account.id}" minlength="12" maxlength="128"
+                   autocomplete="new-password" placeholder="New password (12+ characters)"
+                   style="max-width:320px;margin-bottom:0;">
+            <button type="button" class="btn btn-small btn-secondary" onclick="adminResetPassword(${account.id})">Reset password</button>
+        </div>
+        ${linkControls}
+        <p class="status-text" id="adminUserStatus-${account.id}" role="status"></p>
+        <div id="adminUserDetail-${account.id}"></div>`;
+}
+
+function renderAdminUsers() {
+    const list = $("adminUsersList");
+    if (!list || state.adminUsers === null) return;
+
+    if (!state.adminUsers.length) {
+        list.innerHTML = '<p style="color:var(--text-sub)">No accounts match these filters.</p>';
+        return;
+    }
+
+    const researchers = Array.isArray(state.directory) ? state.directory : [];
+    list.innerHTML = state.adminUsers.map(account => `
+        <div class="request-item" data-admin-user="${account.id}">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                <div>
+                    <b style="color:#FFF">${escapeHTML(account.full_name)}</b>
+                    <span style="color:var(--text-sub);font-size:12px">&middot; ${escapeHTML(account.email)}</span>
+                </div>
+                <span class="status-pill ${account.is_active ? "status-accepted" : "status-rejected"}">
+                    ${account.is_active ? "active" : "inactive"}
+                </span>
+            </div>
+            <p style="color:var(--text-sub);font-size:12px;margin:6px 0 0;">
+                ${escapeHTML(ADMIN_ROLE_LABELS[account.role] || account.role)}
+                &middot; account id ${account.id}
+                &middot; created ${escapeHTML(adminTimestamp(account.created_at))}
+            </p>
+            ${renderAdminUserActions(account, researchers)}
+        </div>`).join("");
+}
+
+function replaceAdminAccount(updated) {
+    if (!state.adminUsers || !updated) return;
+    state.adminUsers = state.adminUsers.map(account =>
+        account.id === updated.id ? updated : account
+    );
+    renderAdminUsers();
+}
+
+async function loadAdminUsers() {
+    if (state.adminUsersFlight) return state.adminUsersFlight;
+
+    const seq = ++state.adminUsersSeq;
+    const role = $("adminRoleFilter") ? $("adminRoleFilter").value : "";
+    const active = $("adminActiveFilter") ? $("adminActiveFilter").value : "";
+    const filters = {};
+    if (role) filters.role = role;
+    if (active) filters.active = active;
+
+    setStatus("adminUsersStatus", "Loading accounts…");
+    setBusy("refreshAdminUsersBtn", true);
+
+    const flight = (async () => {
+        try {
+            const [users, researchers] = await Promise.all([
+                api.listUsers(filters),
+                state.directory ? Promise.resolve(state.directory) : api.getResearchers().catch(() => [])
+            ]);
+            if (seq !== state.adminUsersSeq) return;
+
+            state.adminUsers = Array.isArray(users) ? users : [];
+            if (Array.isArray(researchers)) state.directory = researchers;
+            renderAdminUsers();
+            setStatus(
+                "adminUsersStatus",
+                `${state.adminUsers.length} account${state.adminUsers.length === 1 ? "" : "s"} loaded.`,
+                "success"
+            );
+        } catch (error) {
+            if (seq !== state.adminUsersSeq) return;
+            state.adminUsers = null;
+            const list = $("adminUsersList");
+            if (list) list.innerHTML = "";
+            setStatus("adminUsersStatus", humanizeError(error), "error");
+        } finally {
+            if (seq === state.adminUsersSeq) {
+                state.adminUsersFlight = null;
+                setBusy("refreshAdminUsersBtn", false);
+            }
+        }
+    })();
+
+    state.adminUsersFlight = flight;
+    return flight;
+}
+
+async function adminSetActive(userId, active) {
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        const updated = await api.setUserActive(userId, active);
+        replaceAdminAccount(updated);
+        setStatus(
+            `adminUserStatus-${userId}`,
+            active ? "Account activated." : "Account deactivated; its sessions were revoked.",
+            "success"
+        );
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminSetRole(userId) {
+    const select = $(`adminRole-${userId}`);
+    const role = select ? select.value : "";
+    if (!role || state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        const updated = await api.setUserRole(userId, role);
+        replaceAdminAccount(updated);
+        setStatus(
+            `adminUserStatus-${userId}`,
+            `Role changed to ${ADMIN_ROLE_LABELS[role] || role}; its sessions were revoked.`,
+            "success"
+        );
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminRevokeSessions(userId) {
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        const result = await api.revokeUserSessions(userId);
+        const count = Number(result && result.revoked) || 0;
+        setStatus(
+            `adminUserStatus-${userId}`,
+            `${count} active session${count === 1 ? "" : "s"} revoked.`,
+            "success"
+        );
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminResetPassword(userId) {
+    const input = $(`adminPassword-${userId}`);
+    const password = input ? input.value : "";
+    if (state.adminBusy) return;
+    if (password.length < 12 || password.length > 128 || !password.trim()) {
+        setStatus(
+            `adminUserStatus-${userId}`,
+            "Password must contain 12 to 128 characters.",
+            "error"
+        );
+        return;
+    }
+    state.adminBusy = true;
+    try {
+        await api.resetUserPassword(userId, password);
+        if (input) input.value = "";
+        setStatus(
+            `adminUserStatus-${userId}`,
+            "Password updated; the account's sessions were revoked.",
+            "success"
+        );
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminExportData(userId) {
+    const detail = $(`adminUserDetail-${userId}`);
+    setStatus(`adminUserStatus-${userId}`, "Preparing export…");
+    try {
+        const data = await api.exportUserData(userId);
+        state.adminExports[userId] = data;
+        if (detail) {
+            detail.innerHTML = `
+                <div class="roadmap-label">Data export</div>
+                <p style="font-size:12px;color:var(--text-sub);margin:6px 0;">
+                    Generated ${escapeHTML(adminTimestamp(data.generated_at))}.
+                    Credential and token material is excluded.
+                </p>
+                <button type="button" class="btn btn-small btn-secondary" onclick="downloadAdminExport(${userId})">
+                    Download JSON
+                </button>
+                <pre style="max-height:320px;overflow:auto;background:#12141D;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;white-space:pre-wrap;">${escapeHTML(JSON.stringify(data, null, 2))}</pre>`;
+        }
+        setStatus(`adminUserStatus-${userId}`, "Data export ready.", "success");
+    } catch (error) {
+        if (detail) detail.innerHTML = "";
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    }
+}
+
+function downloadAdminExport(userId) {
+    const data = state.adminExports[userId];
+    if (!data || typeof Blob === "undefined" || !window.URL || !window.URL.createObjectURL) {
+        return;
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `researchtwin-account-${userId}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+}
+
+async function adminAssignLink(userId) {
+    const select = $(`adminLinkResearcher-${userId}`);
+    const researcherId = select ? Number(select.value) : NaN;
+    if (!Number.isInteger(researcherId) || researcherId <= 0) {
+        setStatus(`adminUserStatus-${userId}`, "Select a researcher record first.", "error");
+        return;
+    }
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        const result = await api.assignFacultyResearcherLink(userId, researcherId);
+        const name = result && result.researcher ? result.researcher.name : "selected researcher";
+        setStatus(`adminUserStatus-${userId}`, `Linked to ${name}.`, "success");
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminRemoveLink(userId) {
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        await api.removeFacultyResearcherLink(userId);
+        setStatus(`adminUserStatus-${userId}`, "Researcher link removed.", "success");
+    } catch (error) {
+        setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+function renderAdminAudit() {
+    const list = $("adminAuditList");
+    if (!list || state.adminAudit === null) return;
+
+    if (!state.adminAudit.length) {
+        list.innerHTML = '<p style="color:var(--text-sub)">No audit events match these filters.</p>';
+        return;
+    }
+
+    list.innerHTML = state.adminAudit.map(event => {
+        const actor = event.actor_email
+            || (event.actor_user_id ? `user ${event.actor_user_id}` : "system");
+        const target = event.target_id
+            ? `${event.target_type || "unknown"} #${event.target_id}`
+            : (event.target_type || "unknown");
+        return `
+            <div class="request-item">
+                <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <b style="color:#FFF">${escapeHTML(event.action)}</b>
+                    <span style="color:var(--text-sub);font-size:12px">${escapeHTML(adminTimestamp(event.created_at))}</span>
+                </div>
+                <p style="color:var(--text-sub);font-size:12px;margin:6px 0;">
+                    Actor: ${escapeHTML(actor)} &middot; Target: ${escapeHTML(target)}
+                </p>
+                <pre style="background:#12141D;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;white-space:pre-wrap;margin:0;">${escapeHTML(event.detail || "")}</pre>
+            </div>`;
+    }).join("");
+}
+
+async function loadAdminAudit() {
+    if (state.adminAuditFlight) return state.adminAuditFlight;
+
+    const seq = ++state.adminAuditSeq;
+    const action = $("adminAuditAction") ? $("adminAuditAction").value.trim() : "";
+    const targetType = $("adminAuditTargetType") ? $("adminAuditTargetType").value.trim() : "";
+    const targetIdValue = $("adminAuditTargetId") ? $("adminAuditTargetId").value.trim() : "";
+    const targetId = targetIdValue ? Number(targetIdValue) : null;
+
+    const filters = {};
+    if (action) filters.action = action;
+    if (targetType) filters.target_type = targetType;
+    if (targetId !== null && Number.isInteger(targetId) && targetId > 0) {
+        filters.target_id = targetId;
+    }
+
+    setStatus("adminAuditStatus", "Loading audit events…");
+    setBusy("refreshAuditBtn", true);
+
+    const flight = (async () => {
+        try {
+            const events = await api.listAuditEvents(filters);
+            if (seq !== state.adminAuditSeq) return;
+            state.adminAudit = Array.isArray(events) ? events : [];
+            renderAdminAudit();
+            setStatus(
+                "adminAuditStatus",
+                `${state.adminAudit.length} event${state.adminAudit.length === 1 ? "" : "s"} loaded.`,
+                "success"
+            );
+        } catch (error) {
+            if (seq !== state.adminAuditSeq) return;
+            state.adminAudit = null;
+            const list = $("adminAuditList");
+            if (list) list.innerHTML = "";
+            setStatus("adminAuditStatus", humanizeError(error), "error");
+        } finally {
+            if (seq === state.adminAuditSeq) {
+                state.adminAuditFlight = null;
+                setBusy("refreshAuditBtn", false);
+            }
+        }
+    })();
+
+    state.adminAuditFlight = flight;
+    return flight;
 }
 
 async function init() {

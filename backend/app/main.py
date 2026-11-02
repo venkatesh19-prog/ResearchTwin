@@ -8,9 +8,16 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .database import Base, engine, get_db
+from .database import (
+    Base,
+    SchemaRevisionError,
+    engine,
+    get_db,
+    verify_schema_revision,
+)
 from . import models
-from .middleware import RequestBodyLimitMiddleware
+from .middleware import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
+from .api import admin as admin_api
 from .api.researchers import router as researcher_router
 from .api.students import router as student_router
 from .api.auth import router as auth_router
@@ -29,7 +36,10 @@ readiness_logger = logging.getLogger("researchtwin.readiness")
 # DATABASE INITIALIZATION
 # --------------------------------------------------
 
-Base.metadata.create_all(bind=engine)
+# PostgreSQL schemas are created only by reviewed Alembic migrations; local
+# SQLite keeps create_all so development and the test suite stay simple.
+if engine.dialect.name == "sqlite":
+    Base.metadata.create_all(bind=engine)
 
 
 # --------------------------------------------------
@@ -50,6 +60,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 # --------------------------------------------------
 # ROUTERS
 # --------------------------------------------------
@@ -60,11 +71,25 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(roadmap_router)
 app.include_router(collaboration_router)
+app.include_router(admin_api.router)
 
 
 # --------------------------------------------------
 # DATABASE FAILURE HANDLING
 # --------------------------------------------------
+
+@app.exception_handler(recommendation.RecommendationBusy)
+async def recommendation_busy_handler(
+    request: Request, exc: recommendation.RecommendationBusy
+):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Recommendation service is at capacity. Please retry shortly."
+        },
+        headers={"Retry-After": str(exc.retry_after)},
+    )
+
 
 @app.exception_handler(SQLAlchemyError)
 async def database_error_handler(request: Request, exc: SQLAlchemyError):
@@ -125,6 +150,15 @@ def readiness_check(db: Session = Depends(get_db)):
         readiness_logger.error(
             "Readiness database probe failed (%s)", type(exc).__name__
         )
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready"},
+        )
+
+    try:
+        verify_schema_revision(db)
+    except SchemaRevisionError as exc:
+        readiness_logger.error("Readiness schema revision check failed: %s", exc)
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready"},

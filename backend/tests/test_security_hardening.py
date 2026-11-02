@@ -282,8 +282,8 @@ def test_shared_database_requirement_fails_closed_on_sqlite(client, monkeypatch)
     }
 
 
-def test_forwarded_ip_is_used_only_when_explicitly_enabled(monkeypatch):
-    scope = {
+def _request_scope(header=b"203.0.113.7", peer="198.51.100.8"):
+    return {
         "type": "http",
         "http_version": "1.1",
         "method": "GET",
@@ -292,16 +292,59 @@ def test_forwarded_ip_is_used_only_when_explicitly_enabled(monkeypatch):
         "raw_path": b"/",
         "query_string": b"",
         "headers": [
-            (b"cf-connecting-ip", b"203.0.113.7"),
+            (b"cf-connecting-ip", header),
             (b"x-forwarded-for", b"192.0.2.99"),
         ],
-        "client": ("198.51.100.8", 1234),
+        "client": (peer, 1234),
         "server": ("testserver", 80),
     }
+
+
+def test_forwarded_ip_requires_an_explicit_trusted_proxy(monkeypatch):
+    scope = _request_scope()
+    monkeypatch.delenv("RATE_LIMIT_TRUSTED_PROXY_CIDRS", raising=False)
+
     monkeypatch.setenv("RATE_LIMIT_TRUST_CF_CONNECTING_IP", "false")
     assert rate_limit.client_ip_identity(Request(scope)) == "198.51.100.8"
+
+    # Enabling the flag alone must not trust a header from any peer.
     monkeypatch.setenv("RATE_LIMIT_TRUST_CF_CONNECTING_IP", "true")
+    assert rate_limit.client_ip_identity(Request(scope)) == "198.51.100.8"
+
+    monkeypatch.setenv("RATE_LIMIT_TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+    assert rate_limit.client_ip_identity(Request(scope)) == "198.51.100.8"
+
+    monkeypatch.setenv("RATE_LIMIT_TRUSTED_PROXY_CIDRS", "198.51.100.0/24")
     assert rate_limit.client_ip_identity(Request(scope)) == "203.0.113.7"
+
+    malformed = _request_scope(header=b"not-an-address")
+    assert rate_limit.client_ip_identity(Request(malformed)) == "198.51.100.8"
+
+
+@pytest.mark.parametrize("trust_enabled", ["false", "true"])
+def test_spoofed_forwarding_header_cannot_bypass_ip_rate_limit(
+    client, monkeypatch, trust_enabled
+):
+    monkeypatch.setattr("app.api.auth.REGISTER_MAX", 1)
+    monkeypatch.setenv("RATE_LIMIT_TRUST_CF_CONNECTING_IP", trust_enabled)
+    monkeypatch.delenv("RATE_LIMIT_TRUSTED_PROXY_CIDRS", raising=False)
+
+    def register(spoofed_ip):
+        return client.post(
+            "/auth/register",
+            json={
+                "email": f"spoof-{uuid.uuid4().hex}@example.test",
+                "password": "TestPassword123!",
+                "full_name": "Spoof Attempt",
+                "role": "student",
+            },
+            headers={"CF-Connecting-IP": spoofed_ip},
+        )
+
+    assert register("203.0.113.10").status_code == 201
+    limited = register("203.0.113.11")
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) > 0
 
 
 @pytest.mark.parametrize(
@@ -404,6 +447,23 @@ def test_read_and_search_remain_public(client, seeded_db):
     assert client.get("/researchers/").status_code == 200
     researcher_id = client.get("/researchers/").json()[0]["id"]
     assert client.get(f"/researchers/{researcher_id}").status_code == 200
+
+
+def test_every_api_response_carries_security_headers(client):
+    for response in (
+        client.get("/"),
+        client.get("/admin/users"),
+        client.get("/does-not-exist"),
+    ):
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["referrer-policy"] == "no-referrer"
+        assert response.headers["permissions-policy"] == (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        assert response.headers["strict-transport-security"] == (
+            "max-age=31536000; includeSubDomains"
+        )
 
 
 def test_faculty_profile_save_is_not_a_researcher_mutation_bypass(

@@ -98,7 +98,7 @@ From the project root, serve the static frontend and open `http://127.0.0.1:5500
 npx serve frontend --listen 5500 --no-clipboard
 ```
 
-There is no frontend build step. `frontend/frontend-config.js` selects the local API for localhost addresses. For a non-local host, it defaults to the Render API URL; a static host does not automatically inject environment variables into JavaScript. To override it, assign `window.RESEARCHTWIN_API_BASE` before `frontend-config.js` loads.
+There is no frontend build step. `frontend/frontend-config.js` selects the local API only on localhost addresses and the Render API only on the documented production Netlify host; any other hostname leaves the API unset and the client fails closed with a configuration error. A static host does not automatically inject environment variables into JavaScript. To override the API deliberately, assign `window.RESEARCHTWIN_API_BASE` before `frontend-config.js` loads; `api-client.js` accepts only a bare HTTP(S) origin, permits plain `http` only for loopback, and rejects credentials, paths, query strings, and fragments.
 
 The detailed isolated Playwright setup is in [tests/e2e/README.md](tests/e2e/README.md).
 
@@ -106,19 +106,40 @@ The detailed isolated Playwright setup is in [tests/e2e/README.md](tests/e2e/REA
 
 SQLAlchemy models live in `backend/app/models.py`. The application uses SQLite by default at the absolute path `backend/researchtwin.db`, or uses `DATABASE_URL` when configured. PostgreSQL URLs are normalized to the `postgresql+psycopg` driver. SQLite foreign-key enforcement is enabled.
 
-Tables cover users and hashed bearer sessions; researcher directory records; student and faculty profiles; admin-verified faculty/researcher links; collaboration requests; roadmap progress; and shared rate-limit counters.
+Tables cover users and hashed bearer sessions; researcher directory records; student and faculty profiles; admin-verified faculty/researcher links; collaboration requests; roadmap progress; shared rate-limit counters; and append-only audit events.
 
 ### Fresh database setup
 
-Set an explicit new SQLite path under the operating system temporary directory as shown in the local demo setup, then start the backend. On startup, `Base.metadata.create_all()` creates missing tables; there is no separate database initialization command. The default database file may already contain data, so use an isolated URL when you want a fresh demo.
+For local SQLite, set an explicit new path under the operating system temporary directory as shown in the local demo setup, then start the backend. On startup, `Base.metadata.create_all()` creates missing tables for SQLite only. PostgreSQL schemas are created exclusively by Alembic migrations.
 
 ### Schema migrations
 
-The repository currently has no Alembic configuration, migration directory, or migration dependency. `create_all()` can create missing tables, but it does not safely evolve existing tables or provide reviewed, versioned upgrades.
+Alembic is configured from `backend/` (`alembic.ini`, `migrations/`). Revision `0001_baseline` matches the schema that `create_all()` produced before migrations were introduced; `tests/test_migrations.py` checks it against the models, a fresh upgrade, an existing stamped database, a downgrade, and an incompatible upgrade.
 
-Before schema changes are released to an existing database, adopt Alembic in a separate reviewed change: pin Alembic; configure metadata and URL handling; establish a baseline against a copy of the current schema; inspect generated revisions by hand; test upgrades on a disposable copy and a restored backup; back up production; run the approved migration as a one-off operation; verify constraints and data; and retain a tested restore path. Do not use destructive downgrades as a recovery plan. Keep application startup from silently applying schema changes once migrations are in place.
+Run from `backend/` with `DATABASE_URL` pointing at the target database:
 
-See [Security assessment](SECURITY_ASSESSMENT.md), [Production configuration checklist](PRODUCTION_CONFIGURATION_CHECKLIST.md), and [Repository cleanup inventory](REPOSITORY_CLEANUP_INVENTORY.md).
+```powershell
+alembic current
+alembic upgrade head          # fresh database
+alembic stamp 0001_baseline   # one-time mark for an existing unchanged database
+alembic check                 # confirm models and the migration head agree
+```
+
+Never point migration commands at production without an approved change: back up first, rehearse on a restored copy, review the generated revision, run one revision as a one-off step, verify constraints and data, and retain a tested restore path. Downgrades drop data and are not a recovery plan. See [Security assessment](SECURITY_ASSESSMENT.md), [Production configuration checklist](PRODUCTION_CONFIGURATION_CHECKLIST.md), and [Repository cleanup inventory](REPOSITORY_CLEANUP_INVENTORY.md).
+
+### Backups and recovery
+
+`backend/scripts/database_backup.py` creates checksummed backups with a manifest, verifies them, reports capacity and session-retention indicators, and restores only to a new path. SQLite backups use the online-backup API; PostgreSQL backups use `pg_dump`. Verification works without a manifest (read-only), but restore requires the manifest by default. A legacy backup with no manifest can be restored only after verification and an explicit `--allow-manifestless` opt-in. The free hosting tier is not assumed to provide durable backups.
+
+```powershell
+cd backend
+python scripts/database_backup.py status --source researchtwin-demo.db
+python scripts/database_backup.py backup --source researchtwin-demo.db --destination ..\backups\snapshot.db
+python scripts/database_backup.py verify --backup ..\backups\snapshot.db
+python scripts/database_backup.py restore --backup ..\backups\snapshot.db --target ..\restore-drill.db
+```
+
+Backup cadence, retention, restore drills, account deletion, personal-data export, and capacity monitoring are documented in [Disaster recovery](DISASTER_RECOVERY.md).
 
 ## API Endpoints
 
@@ -143,7 +164,11 @@ All protected routes require a bearer token. Student and faculty profile routes 
 - `GET /researchers/` and `GET /researchers/{id}` — public directory reads. List requests support `offset` and `limit` (maximum 500), plus search filters.
 - `POST /researchers/`, `PUT /researchers/{id}`, and `DELETE /researchers/{id}` — administrator-only shared directory mutations.
 - `POST /researchers/import` — administrator-only idempotent import of the bundled CSV at `backend/data/researchers.csv`.
-- `PUT /admin/faculty/{id}/researcher-link` — administrator-only faculty/researcher assignment.
+- `PUT /admin/faculty/{id}/researcher-link` and `DELETE /admin/faculty/{id}/researcher-link` — administrator-only faculty/researcher assignment and removal, both audited.
+- `GET /admin/users` — administrator-only account listing with role and active filters.
+- `PUT /admin/users/{id}/active`, `PUT /admin/users/{id}/role`, `POST /admin/users/{id}/sessions/revoke`, and `POST /admin/users/{id}/password-reset` — administrator-only lifecycle operations. Self status/role changes are rejected and sensitive actions revoke sessions.
+- `GET /admin/users/{id}/data-export` — administrator-only personal-data export without credential or token material.
+- `GET /admin/audit-events` — administrator-only audit history with action, target, and pagination filters.
 
 ### Collaboration and roadmap
 
@@ -157,6 +182,10 @@ All protected routes require a bearer token. Student and faculty profile routes 
 - `GET /ready` and `GET /readiness` — readiness including database, model artifact, and limiter configuration.
 - FastAPI schema/docs are served by the application at `/openapi.json` and `/docs`.
 
+## Institution model (decision blocked)
+
+The current implementation has no institution or tenant scoping: one deployment serves one shared researcher directory, and registration is open to the configured frontend. Whether an institution should run a separate deployment or share a multi-tenant deployment has **not** been established by product documentation or code. That decision is recorded as blocked; do not add a `tenant_id` or similar field until isolation requirements and the ownership model are explicitly approved.
+
 ## Features
 
 Researcher recommendations combine textual, semantic, research-area, expertise, skill, project, and publication signals. The active model expects seven features in a fixed order and returns ranked scores with explanations.
@@ -164,6 +193,8 @@ Researcher recommendations combine textual, semantic, research-area, expertise, 
 Student profiles drive personalized recommendations and skill-gap roadmaps; saved progress is scoped to the student's account and researcher.
 
 Faculty collaboration inbox access depends on the administrator-verified faculty/researcher link.
+
+Administrator accounts get an account-management console after sign-in: role and status filters, activation/deactivation, role changes, session revocation, password reset, faculty/researcher link assignment, per-account data export, and a filterable audit log. Every operation is enforced again by the API; the console is only a client of the administrator-only endpoints.
 
 Authentication uses server-side role and ownership checks; the frontend's role-aware controls are only a user-interface aid.
 
@@ -179,10 +210,8 @@ Run backend tests from `backend/` with the canonical Python 3.11 environment:
 C:\Users\Venkatesh\researchtwin-venv311\Scripts\python.exe -m pytest -q
 ```
 
-Run the repository's complete frontend API-client, configuration, and dashboard test suite from the project root:
-
 ```powershell
-node --test tests/frontend/api-client.test.cjs tests/frontend/config.test.cjs tests/frontend/dashboard.test.cjs
+npm test
 ```
 
 Run actual-browser journeys only against a new temporary SQLite database. Follow every guard and setup step in [tests/e2e/README.md](tests/e2e/README.md), then execute:
@@ -191,7 +220,7 @@ Run actual-browser journeys only against a new temporary SQLite database. Follow
 node tests/e2e/researchtwin.phase3.e2e.cjs
 ```
 
-`npm test` is currently a placeholder and exits with an error; use the explicit Node command above. Historical test counts in older audit reports are snapshots. The Phase 4 final run and environment details are recorded in the [release checklist](PRODUCTION_RELEASE_CHECKLIST.md).
+`npm test` runs the complete frontend suite, including headers and configuration checks. Historical test counts in older audit reports are snapshots; the current local verified run is 316 backend and 101 frontend tests plus 13 browser journey groups in the pinned Python 3.11 environment. Phase 13 environment and performance measurements are recorded in the [release checklist](PRODUCTION_RELEASE_CHECKLIST.md).
 
 See [backend testing notes](backend/TESTING.md) for isolated fixtures and production-like checks.
 
@@ -201,11 +230,12 @@ See [backend testing notes](backend/TESTING.md) for isolated fixtures and produc
 
 | Variable | Purpose and current behavior |
 |---|---|
-| `DATABASE_URL` | SQLAlchemy database URL. If unset, uses SQLite at `backend/researchtwin.db`. Production shared rate limits require PostgreSQL. |
+| `DATABASE_URL` | SQLAlchemy database URL. If unset, local development uses SQLite at `backend/researchtwin.db`; when `RENDER=true` the application refuses to start without it. Production shared rate limits require PostgreSQL. |
 | `FRONTEND_ORIGINS` | Comma-separated browser origins added to the CORS allowlist. The backend also includes the two localhost port-5500 origins. |
 | `RATE_LIMIT_HASH_SECRET` | Required by rate limiting; use a randomly generated value of at least 32 bytes. Never log or commit it. |
 | `RATE_LIMIT_REQUIRE_SHARED_DATABASE` | Set `true` in multi-instance production; requires PostgreSQL. Local SQLite demo uses `false`. |
-| `RATE_LIMIT_TRUST_CF_CONNECTING_IP` | Trusts a valid `CF-Connecting-IP` value when enabled. Enable only if the ingress proxy is verified to overwrite or secure this header. |
+| `RATE_LIMIT_TRUST_CF_CONNECTING_IP` | Trusts a valid `CF-Connecting-IP` value only when this is `true` **and** the direct peer is listed in `RATE_LIMIT_TRUSTED_PROXY_CIDRS`. Enable only if the ingress proxy is verified to overwrite or secure this header; otherwise the peer address is used. |
+| `RATE_LIMIT_TRUSTED_PROXY_CIDRS` | Comma-separated networks of verified ingress proxies. An empty or invalid list means no proxy is trusted. Do not guess values. |
 | `RATE_LIMIT_REGISTER_MAX`, `RATE_LIMIT_REGISTER_WINDOW_SECONDS` | Registration limit; current Render file sets 5 per 3600 seconds. |
 | `RATE_LIMIT_LOGIN_MAX`, `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | Login limit; current Render file sets 10 per 900 seconds. |
 | `RATE_LIMIT_RECOMMENDATION_MAX`, `RATE_LIMIT_RECOMMENDATION_WINDOW_SECONDS` | Recommendation limit; current Render file sets 8 per 300 seconds. |
@@ -217,7 +247,7 @@ Never put secret values in this README or other tracked files.
 
 ### Frontend API URL
 
-`frontend/frontend-config.js` selects `http://127.0.0.1:8000` on local hostnames; otherwise its current default is `https://researchtwin-api.onrender.com`. The optional override is a JavaScript global (`window.RESEARCHTWIN_API_BASE`), not a Netlify environment variable. Set the global before the config script loads if a different API host is intentionally used.
+`frontend/frontend-config.js` selects `http://127.0.0.1:8000` on local hostnames and `https://researchtwin-api.onrender.com` only on the documented production Netlify host (`starlit-empanada-a323e3.netlify.app`). Any other hostname is left unconfigured, and `frontend/api-client.js` then fails closed with a configuration error instead of calling an unintended backend. The optional override is a JavaScript global (`window.RESEARCHTWIN_API_BASE`), not a Netlify environment variable; it must be a bare HTTP(S) origin (plain `http` only for loopback). Set the global before the config script loads if a different API host is intentionally used, and add that host to the Netlify CSP `connect-src` deliberately.
 
 ## Deployment
 
@@ -227,7 +257,7 @@ Use the isolated SQLite setup above, start the backend and static frontend local
 
 ### Production preparation (not a deployment instruction)
 
-The repository configures a Render Python service (`rootDir: backend`, Python 3.11.11, `pip install -r requirements.txt`, `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, readiness path `/ready`) and a Netlify static publish directory `frontend`. Configure a durable shared PostgreSQL database and the environment variables listed above in the hosting dashboard. Set the exact frontend origin in `FRONTEND_ORIGINS`; configure the frontend API host intentionally. Confirm the active seven-feature model artifact is included in the release bundle.
+The repository configures a Render Python service (`rootDir: backend`, Python 3.11.11, `pip install -r requirements.txt -c constraints.txt`, ONNX model fetch at build time, `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, readiness path `/ready`) and a Netlify static publish directory `frontend`. Configure a durable shared PostgreSQL database and the environment variables listed above in the hosting dashboard. Set the exact frontend origin in `FRONTEND_ORIGINS`; configure the frontend API host intentionally. Confirm the active seven-feature model artifact is included in the release bundle.
 
 The YAML does not declare a PostgreSQL service, persistent disk, plan, or migration command. The Render/Netlify dashboards and live app were not inspected as part of these documentation updates. Complete [Production configuration checklist](PRODUCTION_CONFIGURATION_CHECKLIST.md) before any deployment. No deploy, push, or live-service change is part of this repository setup guide.
 
@@ -237,9 +267,11 @@ Passwords use PBKDF2-HMAC-SHA256 with a per-user salt; session tokens are random
 
 The browser stores only the bearer token in `sessionStorage`, never the password. JavaScript can read that token, so a successful XSS attack can steal the current session. Cookie migration needs HttpOnly/Secure/SameSite cookies, CSRF protections, credentialed CORS, and coordinated frontend/backend tests; it has not been introduced.
 
-Researcher shared writes/import and faculty link assignment require administrator authorization. Public registration does not allow administrator roles. CORS does not allow credentials. Production origins must be exact; `netlify.toml` currently contains no response security headers or Content Security Policy.
+Researcher shared writes/import and faculty link assignment require administrator authorization. Public registration does not allow administrator roles. CORS does not allow credentials. Production origins must be exact. The repository configures CSP, HSTS, frame, MIME-sniffing, referrer, and permissions headers in `frontend/_headers` (Netlify reads this file from the publish directory, not from `netlify.toml`); `tests/frontend/headers.test.cjs` statically verifies the directives and that every external asset on `index.html` and `researchtwin.html` is permitted. Live response headers were not inspected.
 
-Authentication and recommendation limits share counters across workers only when they use the same PostgreSQL database. Production Render configuration requires this mode. No Alembic migration system is present; `create_all()` is not an existing-schema upgrade plan.
+Successful login, failed login, and logout write audit events. Events exclude passwords, hashes, tokens, authorization headers, and request bodies; unknown login emails are not stored, and repeated failures are deduplicated per identity per login window. See [Security assessment](SECURITY_ASSESSMENT.md) for the exact failure and growth behavior.
+
+Authentication and recommendation limits share counters across workers only when they use the same PostgreSQL database. Production Render configuration requires this mode. PostgreSQL schema changes go through Alembic (`backend/migrations/`); `create_all()` runs for SQLite only and is not an existing-schema upgrade plan.
 
 See the evidence and remaining security risks in [Security assessment](SECURITY_ASSESSMENT.md).
 

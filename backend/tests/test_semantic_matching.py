@@ -1,5 +1,6 @@
 """Semantic matching edge-case tests (no embedding model download)."""
 
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -270,3 +271,108 @@ def test_concurrent_first_use_builds_a_single_embedder(monkeypatch):
 
     assert len(built) == 1, f"expected one embedder, built {len(built)}"
     assert len({id(model) for model in loaded}) == 1
+
+
+def test_installed_model_files_match_the_pinned_hashes():
+    model_path = getattr(semantic_matching, "MODEL_PATH")
+    tokenizer_path = getattr(semantic_matching, "TOKENIZER_PATH")
+
+    if not (os.path.exists(model_path) and os.path.exists(tokenizer_path)):
+        pytest.skip("embedding artifacts are not installed in this checkout")
+
+    semantic_matching._verified_signature = None
+    semantic_matching.verify_model_files()
+
+
+def _point_at(tmp_path, monkeypatch, model_bytes, tokenizer_bytes):
+    model = tmp_path / "model.onnx"
+    tokenizer = tmp_path / "tokenizer.json"
+    model.write_bytes(model_bytes)
+    tokenizer.write_bytes(tokenizer_bytes)
+    monkeypatch.setattr(semantic_matching, "MODEL_PATH", str(model))
+    monkeypatch.setattr(semantic_matching, "TOKENIZER_PATH", str(tokenizer))
+    monkeypatch.setattr(semantic_matching, "_verified_signature", None)
+    return model, tokenizer
+
+
+def test_missing_tokenizer_is_rejected(tmp_path, monkeypatch):
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"present")
+    monkeypatch.setattr(semantic_matching, "MODEL_PATH", str(model))
+    monkeypatch.setattr(
+        semantic_matching, "TOKENIZER_PATH", str(tmp_path / "missing.json")
+    )
+    monkeypatch.setattr(semantic_matching, "_verified_signature", None)
+
+    with pytest.raises(semantic_matching.SemanticMatchingError, match="missing"):
+        semantic_matching.verify_model_files()
+
+
+def test_modified_model_files_are_rejected(tmp_path, monkeypatch):
+    _point_at(tmp_path, monkeypatch, b"tampered model", b"tampered tokenizer")
+
+    with pytest.raises(
+        semantic_matching.SemanticMatchingError, match="integrity check"
+    ):
+        semantic_matching.verify_model_files()
+
+
+def test_verification_hashes_once_and_then_uses_the_cache(tmp_path, monkeypatch):
+    model, tokenizer = _point_at(tmp_path, monkeypatch, b"model", b"tokenizer")
+    real_hash = semantic_matching._file_sha256
+    calls = []
+
+    def counting_hash(path):
+        calls.append(path)
+        return real_hash(path)
+
+    monkeypatch.setattr(semantic_matching, "_file_sha256", counting_hash)
+    monkeypatch.setattr(
+        semantic_matching,
+        "EXPECTED_FILE_SHA256",
+        {
+            "model.onnx": real_hash(str(model)),
+            "tokenizer.json": real_hash(str(tokenizer)),
+        },
+    )
+
+    semantic_matching.verify_model_files()
+    semantic_matching.verify_model_files()
+
+    assert len(calls) == 2
+
+
+def test_onnx_session_uses_one_intra_op_thread(monkeypatch):
+    import onnxruntime
+    import tokenizers
+
+    captured = {}
+
+    class FakeOptions:
+        intra_op_num_threads = 0
+
+    class FakeSession:
+        def __init__(self, path, sess_options=None, providers=None):
+            captured["options"] = sess_options
+
+        def get_inputs(self):
+            return []
+
+    class FakeTokenizer:
+        @classmethod
+        def from_file(cls, path):
+            return cls()
+
+        def enable_truncation(self, **kwargs):
+            pass
+
+        def enable_padding(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(onnxruntime, "SessionOptions", FakeOptions)
+    monkeypatch.setattr(onnxruntime, "InferenceSession", FakeSession)
+    monkeypatch.setattr(tokenizers, "Tokenizer", FakeTokenizer)
+
+    semantic_matching.OnnxTextEmbedder("model.onnx", "tokenizer.json")
+
+    assert captured["options"].intra_op_num_threads == 1

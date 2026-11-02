@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import os
 import threading
+from contextlib import contextmanager
 
 import joblib
 import pandas as pd
@@ -24,6 +25,40 @@ from .skill_gap import calculate_skill_gap, normalize_skills
 
 class RecommendationError(RuntimeError):
     """Raised when the model bundle or recommendation pipeline is unusable."""
+
+
+class RecommendationBusy(RuntimeError):
+    """Raised when all in-process recommendation slots are occupied."""
+
+    def __init__(self, retry_after: int = 5):
+        super().__init__("Recommendation capacity is exhausted")
+        self.retry_after = retry_after
+
+
+def _positive_setting(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+RECOMMENDATION_MAX_CONCURRENCY = _positive_setting(
+    "RECOMMENDATION_MAX_CONCURRENCY", 2
+)
+RECOMMENDATION_RETRY_AFTER_SECONDS = 5
+_recommendation_slots = threading.BoundedSemaphore(RECOMMENDATION_MAX_CONCURRENCY)
+
+
+@contextmanager
+def recommendation_slot():
+    """Non-blocking process-local guard around expensive recommendation work."""
+    if not _recommendation_slots.acquire(blocking=False):
+        raise RecommendationBusy(RECOMMENDATION_RETRY_AFTER_SECONDS)
+    try:
+        yield
+    finally:
+        _recommendation_slots.release()
 
 
 # =========================================================
@@ -576,6 +611,15 @@ def generate_explanation(
 # =========================================================
 
 def generate_recommendations(
+    student_profile: dict,
+    db: Session,
+    top_k: int = 5
+):
+    with recommendation_slot():
+        return _generate_recommendations(student_profile, db, top_k)
+
+
+def _generate_recommendations(
     student_profile: dict,
     db: Session,
     top_k: int = 5

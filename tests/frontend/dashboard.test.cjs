@@ -276,3 +276,150 @@ test('root launcher and legacy app resolve to the canonical authenticated applic
     const location = { search: '?from=legacy', hash: '#profile', replace: url => { redirected = url; } };
     vm.runInNewContext(code, { window: { location }, location }); assert.equal(redirected, 'frontend/researchtwin.html?from=legacy#profile');
 });
+
+test('admin console: role label, nav, and account list are wired to the admin API', async () => {
+    const accounts = [
+        { id: 42, email: 'admin@example.org', full_name: 'Admin User', role: 'admin', is_active: true, created_at: 1 },
+        { id: 7, email: 'faculty@example.org', full_name: 'Faculty User', role: 'faculty', is_active: true, created_at: 1 },
+        { id: 8, email: 'student@example.org', full_name: 'Student User', role: 'student', is_active: false, created_at: 1 }
+    ];
+    let filters;
+    const h = harness({
+        listUsers: async value => { filters = value; return accounts; },
+        getResearchers: async () => researchers
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    assert.match(h.$('userChip').innerHTML, /Administrator/);
+    assert.doesNotMatch(h.$('userChip').innerHTML, /Student/);
+    assert.match(h.$('navMenu').innerHTML, /adminUsersView/);
+    assert.match(h.$('navMenu').innerHTML, /adminAuditView/);
+    assert.doesNotMatch(h.$('navMenu').innerHTML, /matchView|inboxView/);
+    assert.deepEqual({ ...filters }, {});
+    assert.match(h.$('adminUsersStatus').textContent, /3 accounts loaded/);
+    assert.equal(h.$('adminUsersList').children.length, 3);
+
+    const list = h.$('adminUsersList').innerHTML;
+    assert.match(list, /Faculty User/);
+    assert.match(list, /Faculty \/ Researcher/);
+    assert.match(list, /inactive/);
+    assert.match(list, /This is your signed-in account/);
+    assert.equal(h.$('adminRole-42'), null, 'the signed-in administrator must not receive self-lifecycle controls');
+    assert.ok(h.$('adminRole-7'), 'other accounts must expose role controls');
+    assert.match(h.$('adminUsersList').innerHTML, /Ada/);
+    assert.equal(h.$('adminLinkResearcher-8'), null, 'student accounts must not expose researcher links');
+});
+
+test('admin console: lifecycle actions call the admin API and report outcomes', async () => {
+    const base = { id: 7, email: 'faculty@example.org', full_name: 'Faculty User', role: 'faculty', is_active: true, created_at: 1 };
+    const calls = [];
+    const h = harness({
+        listUsers: async () => [{ ...base }],
+        getResearchers: async () => researchers,
+        setUserActive: async (id, active) => { calls.push(['active', id, active]); return { ...base, is_active: active }; },
+        setUserRole: async (id, role) => { calls.push(['role', id, role]); return { ...base, role }; },
+        revokeUserSessions: async id => { calls.push(['revoke', id]); return { revoked: 2 }; },
+        resetUserPassword: async (id, password) => { calls.push(['reset', id, password]); return { message: 'Password updated' }; },
+        exportUserData: async id => ({ generated_at: 2, account: base, collaboration_requests: [], faculty_inbox: [], roadmap_progress: [], audit_events: [], sessions: {} }),
+        assignFacultyResearcherLink: async (id, researcherId) => { calls.push(['assign', id, researcherId]); return { linked: true, researcher: { id: researcherId, name: 'Ada' } }; },
+        removeFacultyResearcherLink: async id => { calls.push(['unlink', id]); return { linked: false }; }
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    await h.context.adminSetActive(7, false);
+    assert.deepEqual(calls[0], ['active', 7, false]);
+    assert.match(h.$('adminUserStatus-7').textContent, /deactivated.*sessions were revoked/i);
+
+    await h.context.adminRevokeSessions(7);
+    assert.deepEqual(calls[1], ['revoke', 7]);
+    assert.match(h.$('adminUserStatus-7').textContent, /2 active sessions revoked/);
+
+    h.$('adminPassword-7').value = 'short';
+    await h.context.adminResetPassword(7);
+    assert.match(h.$('adminUserStatus-7').textContent, /12 to 128/);
+    assert.equal(calls.length, 2, 'a too-short password must never reach the API');
+
+    h.$('adminPassword-7').value = 'a-long-enough-password';
+    await h.context.adminResetPassword(7);
+    assert.deepEqual(calls[2], ['reset', 7, 'a-long-enough-password']);
+    assert.equal(h.$('adminPassword-7').value, '', 'the reset password must be cleared after success');
+
+    await h.context.adminExportData(7);
+    assert.match(h.$('adminUserDetail-7').innerHTML, /Download JSON/);
+    assert.match(h.$('adminUserDetail-7').innerHTML, /generated_at/);
+    assert.match(h.$('adminUserStatus-7').textContent, /export ready/i);
+
+    h.$('adminLinkResearcher-7').value = '1';
+    await h.context.adminAssignLink(7);
+    assert.deepEqual(calls[3], ['assign', 7, 1]);
+    assert.match(h.$('adminUserStatus-7').textContent, /Linked to Ada/);
+
+    await h.context.adminRemoveLink(7);
+    assert.deepEqual(calls[4], ['unlink', 7]);
+    assert.match(h.$('adminUserStatus-7').textContent, /link removed/i);
+
+    h.$('adminRole-7').value = 'student';
+    await h.context.adminSetRole(7);
+    assert.deepEqual(calls[5], ['role', 7, 'student']);
+    assert.match(h.$('adminUserStatus-7').textContent, /Role changed to Student/);
+});
+
+test('admin console: audit filters are sent to the API and events are rendered', async () => {
+    let filters;
+    const events = [{
+        id: 2,
+        actor_user_id: 42,
+        actor_email: 'admin@example.org',
+        action: 'account.deactivate',
+        target_type: 'user',
+        target_id: 7,
+        detail: '{"revoked_sessions": 1}',
+        created_at: 2
+    }];
+    const h = harness({
+        listUsers: async () => [],
+        listAuditEvents: async value => { filters = value; return events; }
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    h.$('adminAuditAction').value = 'account.deactivate';
+    h.$('adminAuditTargetType').value = 'user';
+    h.$('adminAuditTargetId').value = '7';
+    await h.context.loadAdminAudit();
+
+    assert.deepEqual({ ...filters }, { action: 'account.deactivate', target_type: 'user', target_id: 7 });
+    const rendered = h.$('adminAuditList').innerHTML;
+    assert.match(rendered, /account\.deactivate/);
+    assert.match(rendered, /admin@example\.org/);
+    assert.match(rendered, /user #7/);
+    assert.match(rendered, /revoked_sessions/);
+    assert.match(h.$('adminAuditStatus').textContent, /1 event loaded/);
+});
+
+test('admin console: a late account response cannot populate a new session', async () => {
+    const pending = deferred();
+    const h = harness({ listUsers: () => pending.promise });
+
+    const entry = h.context.enterApp(user('admin'));
+    h.context.resetAppState();
+    pending.resolve([{ id: 1, email: 'old@example.org', full_name: 'Old', role: 'student', is_active: true, created_at: 1 }]);
+    await entry;
+    await tick();
+
+    assert.equal(h.state.adminUsers, null);
+    assert.doesNotMatch(h.$('adminUsersList').innerHTML, /old@example\.org/);
+});
+
+test('admin views are part of the application shell', () => {
+    assert.match(html, /id="adminUsersView"/);
+    assert.match(html, /id="adminAuditView"/);
+    assert.match(script, /role === "admin"/);
+    assert.match(script, /loadAdminUsers\(\)/);
+    assert.match(script, /loadAdminAudit\(\)/);
+});

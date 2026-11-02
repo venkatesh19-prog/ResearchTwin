@@ -3,6 +3,9 @@
 Semantic matching is stubbed so these tests never download the embedding model.
 """
 
+import threading
+import time
+
 import pytest
 from types import SimpleNamespace
 
@@ -207,3 +210,84 @@ def test_top_k_larger_than_candidate_count_returns_all(seeded_db, db, patch_sema
     results = generate_recommendations(STUDENT_PROFILE, db, top_k=25)
 
     assert len(results) == 3
+
+
+def test_recommendation_capacity_defaults_to_two(monkeypatch):
+    monkeypatch.delenv("RECOMMENDATION_MAX_CONCURRENCY", raising=False)
+
+    assert recommendation.RECOMMENDATION_MAX_CONCURRENCY == 2
+
+
+def test_concurrency_guard_rejects_a_third_call_without_blocking(monkeypatch):
+    monkeypatch.setattr(
+        recommendation, "_recommendation_slots", threading.BoundedSemaphore(2)
+    )
+
+    with recommendation.recommendation_slot():
+        with recommendation.recommendation_slot():
+            started = time.monotonic()
+            with pytest.raises(recommendation.RecommendationBusy) as excinfo:
+                with recommendation.recommendation_slot():
+                    pass
+            elapsed = time.monotonic() - started
+
+    assert elapsed < 1.0
+    assert excinfo.value.retry_after == (
+        recommendation.RECOMMENDATION_RETRY_AFTER_SECONDS
+    )
+    with recommendation.recommendation_slot():
+        pass
+
+
+def test_concurrency_guard_releases_after_an_exception(monkeypatch):
+    monkeypatch.setattr(
+        recommendation, "_recommendation_slots", threading.BoundedSemaphore(1)
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with recommendation.recommendation_slot():
+            raise RuntimeError("boom")
+
+    with recommendation.recommendation_slot():
+        pass
+
+
+def test_generate_recommendations_does_not_run_when_all_slots_are_busy(monkeypatch):
+    monkeypatch.setattr(
+        recommendation, "_recommendation_slots", threading.BoundedSemaphore(1)
+    )
+
+    def must_not_run(*args, **kwargs):
+        raise AssertionError("recommendation work ran without a slot")
+
+    monkeypatch.setattr(recommendation, "_generate_recommendations", must_not_run)
+
+    with recommendation.recommendation_slot():
+        with pytest.raises(recommendation.RecommendationBusy):
+            generate_recommendations(STUDENT_PROFILE, None, top_k=1)
+
+
+def test_generate_recommendations_recovers_after_a_failed_call(monkeypatch):
+    monkeypatch.setattr(
+        recommendation, "_recommendation_slots", threading.BoundedSemaphore(1)
+    )
+    calls = []
+
+    def failing(*args, **kwargs):
+        calls.append("failed")
+        raise recommendation.RecommendationError("model failure")
+
+    monkeypatch.setattr(recommendation, "_generate_recommendations", failing)
+    with pytest.raises(recommendation.RecommendationError):
+        generate_recommendations(STUDENT_PROFILE, None, top_k=1)
+
+    def succeeding(*args, **kwargs):
+        calls.append("succeeded")
+        return [{"researcher_id": 1}]
+
+    monkeypatch.setattr(recommendation, "_generate_recommendations", succeeding)
+
+    assert generate_recommendations(STUDENT_PROFILE, None, top_k=1) == [
+        {"researcher_id": 1}
+    ]
+    assert calls == ["failed", "succeeded"]

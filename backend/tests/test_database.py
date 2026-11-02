@@ -9,6 +9,7 @@ from app.models import Researcher
 
 def test_default_url_points_at_backend_sqlite_file(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RENDER", raising=False)
 
     url = database.resolve_database_url(None)
 
@@ -57,10 +58,30 @@ def test_surrounding_whitespace_is_removed():
 
 def test_empty_string_falls_back_to_default_file(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RENDER", raising=False)
 
     assert database.resolve_database_url("   ") == (
         database.resolve_database_url(None)
     )
+
+
+def test_hosted_environment_requires_an_explicit_database_url(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        database.resolve_database_url(None)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        database.resolve_database_url("   ")
+
+
+def test_hosted_environment_still_accepts_an_explicit_database_url(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+
+    assert database.resolve_database_url(
+        "postgres://rt:secret@db.example.com:5432/researchtwin"
+    ) == "postgresql+psycopg://rt:secret@db.example.com:5432/researchtwin"
 
 
 def test_engine_under_test_uses_sqlite(engine_under_test):

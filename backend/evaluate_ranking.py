@@ -1,3 +1,10 @@
+"""Legacy random-split ranking baseline on an eight-feature variant.
+
+This is not the served seven-feature model, and the random split can place the
+same student in training and test data. Use ``evaluate_grouped_ranking.py`` for
+production-parity metrics.
+"""
+
 import pandas as pd
 import numpy as np
 
