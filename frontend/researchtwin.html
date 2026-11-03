@@ -909,6 +909,22 @@
             </div>
         </div>
 
+        <!-- ADMIN: GROUPS -->
+        <div id="adminGroupsView" class="view-section">
+            <div class="card">
+                <div class="card-title"><i class="fa-solid fa-user-group"></i> Groups</div>
+                <p style="color:var(--text-sub); margin-bottom:15px;">
+                    Every student and faculty account belongs to its role group automatically.
+                    Membership changes are recorded in the audit log.
+                </p>
+                <button type="button" class="btn" id="refreshAdminGroupsBtn" onclick="loadAdminGroups()">
+                    <i class="fa-solid fa-rotate"></i> Refresh Groups
+                </button>
+                <p class="status-text" id="adminGroupsStatus" role="status"></p>
+                <div id="adminGroupsList"></div>
+            </div>
+        </div>
+
         <!-- ADMIN: AUDIT LOG -->
         <div id="adminAuditView" class="view-section">
             <div class="card">
@@ -1000,6 +1016,10 @@ const state = {
     adminAudit: null,
     adminAuditSeq: 0,
     adminAuditFlight: null,
+    adminGroups: null,
+    adminGroupsSeq: 0,
+    adminGroupsFlight: null,
+    adminGroupMembers: {},
     adminBusy: false,
     adminExports: {},
     authTransition: null,
@@ -1108,11 +1128,15 @@ function resetAppState() {
     state.adminAudit = null;
     state.adminAuditSeq += 1;
     state.adminAuditFlight = null;
+    state.adminGroups = null;
+    state.adminGroupsSeq += 1;
+    state.adminGroupsFlight = null;
+    state.adminGroupMembers = {};
     state.adminBusy = false;
     state.adminExports = {};
     setProfileBusy("student", true);
     setProfileBusy("faculty", true);
-    ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn", "refreshAdminUsersBtn", "refreshAuditBtn"].forEach(id => setBusy(id, false));
+    ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn", "refreshAdminUsersBtn", "refreshAuditBtn", "refreshAdminGroupsBtn"].forEach(id => setBusy(id, false));
     ["retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn"].forEach(id => { const el = $(id); if (el) el.classList.add("hidden"); });
     const recommendationCount = $("recommendationCount");
     if (recommendationCount) recommendationCount.value = "5";
@@ -1156,7 +1180,7 @@ function resetAppState() {
         const element = $(id);
         if (element) element.innerHTML = "";
     });
-    ["adminUsersList", "adminAuditList"].forEach((id) => {
+    ["adminUsersList", "adminAuditList", "adminGroupsList"].forEach((id) => {
         const element = $(id);
         if (element) element.innerHTML = "";
     });
@@ -1168,6 +1192,7 @@ function resetAppState() {
     setStatus("inboxStatus", "");
     setStatus("adminUsersStatus", "");
     setStatus("adminAuditStatus", "");
+    setStatus("adminGroupsStatus", "");
 }
 
 function showAuth(message, tone = "error") {
@@ -1200,6 +1225,7 @@ function buildNav(role) {
         ? [
             ["adminUsersView", "fa-users-gear", "Account Management"],
             ["directoryView", "fa-graduation-cap", "Researcher Directory"],
+            ["adminGroupsView", "fa-user-group", "Groups"],
             ["adminAuditView", "fa-clipboard-list", "Audit Log"]
         ]
         : role === "faculty"
@@ -1240,6 +1266,7 @@ function switchView(viewId) {
     if (viewId === "requestsView") loadMyRequests();
     if (viewId === "inboxView") loadFacultyInbox();
     if (viewId === "adminUsersView") loadAdminUsers();
+    if (viewId === "adminGroupsView") loadAdminGroups();
     if (viewId === "adminAuditView") loadAdminAudit();
 }
 
@@ -2762,6 +2789,150 @@ async function adminRemoveLink(userId) {
         setStatus(`adminUserStatus-${userId}`, "Researcher link removed.", "success");
     } catch (error) {
         setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+const GROUP_ROLE_NAMES = { students: "student", faculty: "faculty" };
+
+function renderAdminGroupMembers(groupId) {
+    const container = $(`adminGroupMembers-${groupId}`);
+    const members = state.adminGroupMembers[groupId];
+    if (!container || !members) return;
+    const group = (state.adminGroups || []).find(item => item.id === groupId);
+    const role = group ? GROUP_ROLE_NAMES[group.name] : null;
+    const candidates = (state.adminUsers || []).filter(account => account.role === role);
+    const candidateOptions = candidates.map(account =>
+        `<option value="${account.id}">${escapeHTML(account.full_name)} — ${escapeHTML(account.email)}</option>`
+    ).join("");
+    const memberRows = members.map(member =>
+        `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px;">` +
+            `<span style="color:var(--text-sub);font-size:12px;">` +
+            `${escapeHTML(member.full_name)} &middot; ${escapeHTML(member.email)}` +
+            ` &middot; joined ${escapeHTML(adminTimestamp(member.created_at))}` +
+            `</span>` +
+            `<button type="button" class="btn btn-small btn-secondary" onclick="adminRemoveGroupMember(${groupId}, ${member.user_id})">Remove</button>` +
+        `</div>`
+    ).join("");
+    container.innerHTML =
+        (memberRows || '<p style="color:var(--text-sub);font-size:12px;margin:6px 0 0;">No members.</p>') +
+        `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">` +
+            `<select id="adminGroupCandidate-${groupId}" style="max-width:340px;margin-bottom:0;">` +
+                `<option value="">Select an account…</option>${candidateOptions}` +
+            `</select>` +
+            `<button type="button" class="btn btn-small" onclick="adminAddGroupMember(${groupId})">Add member</button>` +
+        `</div>`;
+}
+
+function renderAdminGroups() {
+    const list = $("adminGroupsList");
+    if (!list || state.adminGroups === null) return;
+
+    if (!state.adminGroups.length) {
+        list.innerHTML = '<p style="color:var(--text-sub)">No groups available.</p>';
+        return;
+    }
+
+    list.innerHTML = state.adminGroups.map(group => `
+        <div class="request-item" data-admin-group="${group.id}">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                <div>
+                    <b style="color:#FFF">${escapeHTML(group.name)}</b>
+                    <span style="color:var(--text-sub);font-size:12px">&middot; ${group.member_count} member${group.member_count === 1 ? "" : "s"}</span>
+                </div>
+                <button type="button" class="btn btn-small" onclick="loadAdminGroupMembers(${group.id})">Manage members</button>
+            </div>
+            <div id="adminGroupMembers-${group.id}"></div>
+            <p class="status-text" id="adminGroupStatus-${group.id}" role="status"></p>
+        </div>`).join("");
+    Object.keys(state.adminGroupMembers).forEach(groupId => renderAdminGroupMembers(Number(groupId)));
+}
+
+async function loadAdminGroups() {
+    if (state.adminGroupsFlight) return state.adminGroupsFlight;
+
+    const seq = ++state.adminGroupsSeq;
+    setStatus("adminGroupsStatus", "Loading groups…");
+    setBusy("refreshAdminGroupsBtn", true);
+
+    const flight = (async () => {
+        try {
+            const groups = await api.listGroups();
+            if (seq !== state.adminGroupsSeq) return;
+            state.adminGroups = Array.isArray(groups) ? groups : [];
+            renderAdminGroups();
+            setStatus(
+                "adminGroupsStatus",
+                `${state.adminGroups.length} group${state.adminGroups.length === 1 ? "" : "s"} loaded.`,
+                "success"
+            );
+        } catch (error) {
+            if (seq !== state.adminGroupsSeq) return;
+            state.adminGroups = null;
+            const list = $("adminGroupsList");
+            if (list) list.innerHTML = "";
+            setStatus("adminGroupsStatus", humanizeError(error), "error");
+        } finally {
+            if (seq === state.adminGroupsSeq) {
+                state.adminGroupsFlight = null;
+                setBusy("refreshAdminGroupsBtn", false);
+            }
+        }
+    })();
+
+    state.adminGroupsFlight = flight;
+    return flight;
+}
+
+async function loadAdminGroupMembers(groupId) {
+    setStatus(`adminGroupStatus-${groupId}`, "Loading members…");
+    try {
+        const members = await api.listGroupMembers(groupId);
+        state.adminGroupMembers[groupId] = Array.isArray(members) ? members : [];
+        renderAdminGroups();
+        setStatus(
+            `adminGroupStatus-${groupId}`,
+            `${state.adminGroupMembers[groupId].length} member${state.adminGroupMembers[groupId].length === 1 ? "" : "s"}.`,
+            "success"
+        );
+    } catch (error) {
+        if (error.kind === "unauthorized") return;
+        setStatus(`adminGroupStatus-${groupId}`, humanizeError(error), "error");
+    }
+}
+
+async function adminAddGroupMember(groupId) {
+    const select = $(`adminGroupCandidate-${groupId}`);
+    const userId = select ? Number(select.value) : NaN;
+    if (!Number.isInteger(userId) || userId <= 0) {
+        setStatus(`adminGroupStatus-${groupId}`, "Select an account first.", "error");
+        return;
+    }
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        await api.addGroupMember(groupId, userId);
+        setStatus(`adminGroupStatus-${groupId}`, "Member added.", "success");
+        await loadAdminGroupMembers(groupId);
+        loadAdminGroups();
+    } catch (error) {
+        setStatus(`adminGroupStatus-${groupId}`, humanizeError(error), "error");
+    } finally {
+        state.adminBusy = false;
+    }
+}
+
+async function adminRemoveGroupMember(groupId, userId) {
+    if (state.adminBusy) return;
+    state.adminBusy = true;
+    try {
+        await api.removeGroupMember(groupId, userId);
+        setStatus(`adminGroupStatus-${groupId}`, "Member removed.", "success");
+        await loadAdminGroupMembers(groupId);
+        loadAdminGroups();
+    } catch (error) {
+        setStatus(`adminGroupStatus-${groupId}`, humanizeError(error), "error");
     } finally {
         state.adminBusy = false;
     }

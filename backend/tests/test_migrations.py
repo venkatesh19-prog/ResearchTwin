@@ -33,10 +33,11 @@ def _sqlite_url(path: Path) -> str:
 
 def _legacy_tables():
     """The pre-Alembic schema: current tables before audit_events existed."""
+    later_tables = {"audit_events", "groups", "group_memberships"}
     return [
         table
         for name, table in Base.metadata.tables.items()
-        if name != "audit_events"
+        if name not in later_tables
     ]
 
 
@@ -147,7 +148,7 @@ def test_documented_adoption_path_stamps_baseline_then_applies_audit_migration(
 
     config = _config(url)
     head = _head(config)
-    assert head == "0002_audit_events"
+    assert head == "0003_groups"
 
     command.stamp(config, "0001_baseline")
     with engine.connect() as connection:

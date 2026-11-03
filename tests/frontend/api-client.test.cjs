@@ -6,9 +6,42 @@ const vm = require("node:vm");
 const { createApi, ApiError } = require("../../frontend/api-client.js");
 const apiClientSource = readFileSync(require.resolve("../../frontend/api-client.js"), "utf8");
 
-function loadBrowserApi(window) {
-  vm.runInNewContext(apiClientSource, { window, URL, AbortController, setTimeout, clearTimeout });
+function loadBrowserApi(window, timers = null) {
+  const timerGlobals = timers
+    ? { setTimeout: timers.setTimeout, clearTimeout: timers.clearTimeout }
+    : { setTimeout, clearTimeout };
+  vm.runInNewContext(apiClientSource, { window, URL, AbortController, ...timerGlobals });
   return window.ResearchTwinAPI;
+}
+
+function createFakeTimers() {
+  let now = 0;
+  let nextId = 1;
+  const pending = new Map();
+  return {
+    now: () => now,
+    advance(ms) {
+      now += ms;
+      for (const [id, timer] of [...pending]) {
+        if (timer.at <= now) {
+          pending.delete(id);
+          timer.fn();
+        }
+      }
+    },
+    setTimeout(fn, ms) {
+      const id = nextId++;
+      pending.set(id, { fn, at: now + ms });
+      return id;
+    },
+    clearTimeout(id) {
+      pending.delete(id);
+    },
+  };
+}
+
+async function flushMicrotasks(rounds = 20) {
+  for (let i = 0; i < rounds; i++) await Promise.resolve();
 }
 
 function deferred() {
@@ -174,6 +207,70 @@ test("timeouts abort the request and report a timeout error", async () => {
     assert.match(error.message, /timed out/i);
     return true;
   });
+});
+
+test("login waits 45 seconds before timing out while other requests keep the 15 second default", async () => {
+  const fetchImpl = (url, options) =>
+    new Promise((resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("Aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    });
+  const timers = createFakeTimers();
+  const window = {
+    RESEARCHTWIN_API_BASE: "https://api.example.test",
+    sessionStorage: memoryStorage({ "researchtwin.sessionToken": "token-123" }),
+    fetch: fetchImpl,
+  };
+  const api = loadBrowserApi(window, timers);
+
+  const loginOutcome = { settled: false, kind: null, message: "" };
+  const loginDone = api
+    .login({ email: "student@example.edu", password: "CorrectHorseBattery9" })
+    .then(
+      () => {
+        loginOutcome.settled = true;
+        loginOutcome.kind = "resolved";
+      },
+      (error) => {
+        loginOutcome.settled = true;
+        loginOutcome.kind = error.kind;
+        loginOutcome.message = error.message;
+      }
+    );
+
+  const meOutcome = { settled: false, kind: null, message: "" };
+  const meDone = api.me().then(
+    () => {
+      meOutcome.settled = true;
+      meOutcome.kind = "resolved";
+    },
+    (error) => {
+      meOutcome.settled = true;
+      meOutcome.kind = error.kind;
+      meOutcome.message = error.message;
+    }
+  );
+
+  timers.advance(16000);
+  await flushMicrotasks();
+  assert.equal(meOutcome.settled, true, "profile request must time out at the 15s default");
+  assert.equal(meOutcome.kind, "timeout");
+  assert.match(meOutcome.message, /15 seconds/);
+  assert.equal(
+    loginOutcome.settled,
+    false,
+    "login must still be pending 16 seconds in"
+  );
+
+  timers.advance(30000);
+  await loginDone;
+  await meDone;
+  assert.equal(loginOutcome.settled, true);
+  assert.equal(loginOutcome.kind, "timeout");
+  assert.match(loginOutcome.message, /45 seconds/);
 });
 
 test("researcher directory remains public while authenticated APIs keep using bearer auth", async () => {

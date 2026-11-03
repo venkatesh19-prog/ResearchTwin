@@ -85,6 +85,41 @@ class AuditEvent(Base):
     created_at = Column(Integer, nullable=False, index=True)
 
 
+class Group(Base):
+    """A named role cohort (for example ``students`` or ``faculty``)."""
+
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False, unique=True, index=True)
+    created_at = Column(Integer, nullable=False)
+
+
+class GroupMembership(Base):
+    """One account's membership in one group; unique per (group, user)."""
+
+    __tablename__ = "group_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(
+        Integer,
+        ForeignKey("groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at = Column(Integer, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_memberships_group_user"),
+    )
+
+
 class RateLimitCounter(Base):
     __tablename__ = "rate_limit_counters"
 

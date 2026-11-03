@@ -4,7 +4,8 @@ import time
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, or_, update
+from sqlalchemy import and_, func, or_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -14,6 +15,8 @@ from ..models import (
     CollaborationRequest,
     FacultyProfile,
     FacultyResearcherLink,
+    Group,
+    GroupMembership,
     Researcher,
     RoadmapProgress,
     StudentProfile,
@@ -26,9 +29,13 @@ from ..schemas import (
     AdminPasswordReset,
     AdminUserResponse,
     AuditEventResponse,
+    GroupMemberResponse,
+    GroupMembershipCreate,
+    GroupResponse,
 )
 from ..services.audit import record_event
 from ..services.auth import hash_password
+from ..services.groups import group_name_for_role
 from .deps import require_admin
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -367,6 +374,150 @@ def export_account_data(
             for event in audit_events
         ],
     }
+
+
+def _get_group(db: Session, group_id: int) -> Group:
+    group = db.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return group
+
+
+@router.get("/groups", response_model=list[GroupResponse])
+def list_groups(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(Group, func.count(GroupMembership.id))
+        .outerjoin(GroupMembership, GroupMembership.group_id == Group.id)
+        .group_by(Group.id)
+        .order_by(Group.id)
+        .all()
+    )
+    return [
+        GroupResponse(
+            id=group.id,
+            name=group.name,
+            member_count=count,
+            created_at=group.created_at,
+        )
+        for group, count in rows
+    ]
+
+
+@router.get("/groups/{group_id}/members", response_model=list[GroupMemberResponse])
+def list_group_members(
+    group_id: int,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    group = _get_group(db, group_id)
+    rows = (
+        db.query(GroupMembership, User.email, User.full_name, User.role)
+        .join(User, User.id == GroupMembership.user_id)
+        .filter(GroupMembership.group_id == group.id)
+        .order_by(GroupMembership.id)
+        .all()
+    )
+    return [
+        GroupMemberResponse(
+            membership_id=membership.id,
+            user_id=membership.user_id,
+            email=email,
+            full_name=full_name,
+            role=role,
+            created_at=membership.created_at,
+        )
+        for membership, email, full_name, role in rows
+    ]
+
+
+@router.post(
+    "/groups/{group_id}/members",
+    response_model=GroupMemberResponse,
+    status_code=201,
+)
+def add_group_member(
+    group_id: int,
+    payload: GroupMembershipCreate,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    group = _get_group(db, group_id)
+    account = db.get(User, payload.user_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    expected_name = group_name_for_role(account.role)
+    if expected_name != group.name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only {account.role} accounts can join the {group.name} group",
+        )
+
+    membership = GroupMembership(
+        group_id=group.id,
+        user_id=account.id,
+        created_at=int(time.time()),
+    )
+    db.add(membership)
+    record_event(
+        db,
+        actor=admin,
+        action="group.member_added",
+        target_type="group",
+        target_id=group.id,
+        detail={"user_id": account.id, "email": account.email},
+    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Account is already a member of this group",
+        ) from exc
+    db.refresh(membership)
+
+    return GroupMemberResponse(
+        membership_id=membership.id,
+        user_id=account.id,
+        email=account.email,
+        full_name=account.full_name,
+        role=account.role,
+        created_at=membership.created_at,
+    )
+
+
+@router.delete("/groups/{group_id}/members/{user_id}")
+def remove_group_member(
+    group_id: int,
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    group = _get_group(db, group_id)
+    membership = (
+        db.query(GroupMembership)
+        .filter(GroupMembership.group_id == group.id, GroupMembership.user_id == user_id)
+        .first()
+    )
+    if membership is None:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    db.delete(membership)
+    record_event(
+        db,
+        actor=admin,
+        action="group.member_removed",
+        target_type="group",
+        target_id=group.id,
+        detail={"user_id": user_id},
+    )
+    db.commit()
+
+    return {"message": "Membership removed"}
 
 
 @router.get("/audit-events", response_model=list[AuditEventResponse])

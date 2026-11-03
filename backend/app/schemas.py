@@ -258,6 +258,28 @@ class AdminPasswordReset(BaseModel):
         return value
 
 
+class GroupResponse(BaseModel):
+    id: int
+    name: str
+    member_count: int
+    created_at: int
+
+
+class GroupMemberResponse(BaseModel):
+    membership_id: int
+    user_id: int
+    email: str
+    full_name: str
+    role: str
+    created_at: int
+
+
+class GroupMembershipCreate(BaseModel):
+    user_id: int = Field(ge=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class AuditEventResponse(BaseModel):
     id: int
     actor_user_id: Optional[int] = None

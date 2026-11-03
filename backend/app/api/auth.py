@@ -16,6 +16,7 @@ from ..schemas import (
     UserResponse,
 )
 from ..services.audit import record_event
+from ..services.groups import assign_role_group
 from ..services.auth import (
     create_session,
     hash_password,
@@ -140,6 +141,8 @@ def register(
 
     db.add(user)
     try:
+        db.flush()
+        assign_role_group(db, user)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -147,6 +150,12 @@ def register(
             status_code=409,
             detail="Email already registered",
         ) from exc
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Registration could not be completed",
+        )
 
     db.refresh(user)
     token, expires_at = create_session(db, user)

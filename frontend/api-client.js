@@ -3,6 +3,7 @@
 
     const TOKEN_KEY = "researchtwin.sessionToken";
     const DEFAULT_TIMEOUT_MS = 15000;
+    const LOGIN_TIMEOUT_MS = 45000;
     const RECOMMENDATION_TIMEOUT_MS = 90000;
 
     class ApiError extends Error {
@@ -222,12 +223,13 @@
             return payload;
         }
 
-        async function authenticate(path, body) {
+        async function authenticate(path, body, options = {}) {
             const generation = ++authGeneration;
             const data = await request(path, {
                 method: "POST",
                 body,
                 auth: false,
+                ...options,
             });
             if (generation !== authGeneration) {
                 throw new ApiError(
@@ -246,7 +248,9 @@
         }
 
         async function login(credentials) {
-            return authenticate("/auth/login", credentials);
+            return authenticate("/auth/login", credentials, {
+                timeoutMs: LOGIN_TIMEOUT_MS,
+            });
         }
 
         async function register(payload) {
@@ -406,6 +410,28 @@
             return request(withQuery("/admin/audit-events", filters));
         }
 
+        function listGroups() {
+            return request("/admin/groups");
+        }
+
+        function listGroupMembers(groupId) {
+            return request(`/admin/groups/${encodeURIComponent(groupId)}/members`);
+        }
+
+        function addGroupMember(groupId, userId) {
+            return request(`/admin/groups/${encodeURIComponent(groupId)}/members`, {
+                method: "POST",
+                body: { user_id: userId },
+            });
+        }
+
+        function removeGroupMember(groupId, userId) {
+            return request(
+                `/admin/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`,
+                { method: "DELETE" }
+            );
+        }
+
         function assignFacultyResearcherLink(facultyUserId, researcherId) {
             return request(`/admin/faculty/${encodeURIComponent(facultyUserId)}/researcher-link`, {
                 method: "PUT",
@@ -446,6 +472,10 @@
             resetUserPassword,
             exportUserData,
             listAuditEvents,
+            listGroups,
+            listGroupMembers,
+            addGroupMember,
+            removeGroupMember,
             assignFacultyResearcherLink,
             removeFacultyResearcherLink,
             clearSession,
