@@ -1,0 +1,3 @@
+researcher_id,name,password,department,research_areas,expertise,required_skills,project_description
+R001,Dr. Alice Smith,123,Computer Science & AI,"Artificial Intelligence, Natural Language Processing","LLMs, Deep Learning, NLP","Python, PyTorch, Transformers",Conversational AI and semantic search engines using LLMs.
+R002,Dr. Bob Jones,123,Computer Vision & Medical Imaging,"Computer Vision, Deep Learning, Image Processing","CNNs, Object Detection","Python, OpenCV, PyTorch, TensorFlow",Real-time object detection and diagnostic image segmentation.

@@ -1,0 +1,3 @@
+paper_id,user_id,title,authors,notes,status
+1,S001,SHAP: A Unified Approach to Interpreting Model Predictions,Lundberg et al.,Foundational paper for Explainable AI in ResearchTwin.,Completed
+2,S001,Attention Is All You Need,Vaswani et al.,Transformer architecture review for NLP matching.,Reading

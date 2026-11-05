@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMS - Lovely Professional University</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --ums-top-notice: #8A4300;
+            --ums-header-bg: #11141B;
+            --ums-side-bg: #D96500;
+            --ums-side-dark: #B55200;
+            --ums-bg: #181B24;
+            --ums-border: #323746;
+            --ums-blue-btn: #0078D4;
+            --ums-pill-orange: #D96500;
+            --ums-text: #FFFFFF;
+            --ums-text-sub: #A0A5B5;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: var(--ums-bg); color: var(--ums-text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        .top-notice-bar { background: var(--ums-top-notice); color: #FFDDAA; font-size: 13px; font-weight: 600; text-align: center; padding: 6px 15px; }
+        .top-notice-bar a { color: #FFF; font-weight: bold; text-decoration: underline; }
+
+        .ums-top-header { background: var(--ums-header-bg); height: 65px; border-bottom: 1px solid var(--ums-border); display: flex; align-items: center; justify-content: space-between; padding: 0 25px; }
+        .ums-brand { display: flex; align-items: center; gap: 12px; }
+        .ums-logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #FF9900, #D96500); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: white; }
+        
+        .header-nav { display: flex; align-items: center; gap: 25px; list-style: none; }
+        .header-nav-item { font-size: 14px; font-weight: 600; color: #D1D5DB; cursor: pointer; }
+
+        .ums-body-wrapper { flex: 1; display: flex; overflow: hidden; }
+        .ums-left-sidebar { width: 95px; background: var(--ums-side-bg); display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 5px; }
+        
+        .side-nav-item { width: 100%; padding: 14px 5px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #FFF; text-decoration: none; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center; }
+        .side-nav-item i { font-size: 22px; }
+        .side-nav-item:hover, .side-nav-item.active { background: var(--ums-side-dark); }
+
+        .side-nav-item.research-twin-btn { background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .side-nav-item.research-twin-btn i { color: #FFD700; }
+
+        .dashboard-container { flex: 1; padding: 25px 35px; overflow-y: auto; background: var(--ums-bg); }
+        .section-header { font-size: 22px; font-weight: 700; margin-bottom: 15px; }
+
+        .links-pill-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; }
+        .pill-btn { padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; color: white; display: flex; align-items: center; gap: 8px; }
+        .pill-orange { background: var(--ums-pill-orange); }
+        .pill-blue { background: var(--ums-blue-btn); }
+        .pill-gold { background: linear-gradient(135deg, #FF9900, #D96500); border: 1px solid #FFD700; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .role-modal { background: #1C202B; border: 1px solid var(--ums-border); border-radius: 12px; padding: 30px; width: 400px; text-align: center; }
+        .role-btn { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-notice-bar">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>To check your event QR attendance, <a href="#">click here to view details.</a></span>
+    </div>
+
+    <div class="ums-top-header">
+        <div class="ums-brand">
+            <div class="ums-logo-icon">UMS</div>
+            <div>
+                <div style="font-size:22px; font-weight:bold;">UMS</div>
+                <div style="font-size:9px; color:var(--ums-text-sub);">UNIVERSITY MANAGEMENT SYSTEM</div>
+            </div>
+        </div>
+
+        <ul class="header-nav">
+            <li class="header-nav-item">Academics <i class="fa-solid fa-chevron-down"></i></li>
+            <li class="header-nav-item">Administrative <i class="fa-solid fa-chevron-down"></i></li>
+            <li class="header-nav-item">Important Links <i class="fa-solid fa-chevron-down"></i></li>
+            <li class="header-nav-item">Student Services <i class="fa-solid fa-chevron-down"></i></li>
+            <li class="header-nav-item">Quick Links <i class="fa-solid fa-chevron-down"></i></li>
+        </ul>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span id="userStatus" style="font-size:13px; color:var(--ums-text-sub);">Guest Mode</span>
+            <button onclick="openRoleSelection()" class="pill-btn pill-orange" style="padding:6px 12px; font-size:12px;">Login</button>
+        </div>
+    </div>
+
+    <div class="ums-body-wrapper">
+        <div class="ums-left-sidebar">
+            <div class="side-nav-item active"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></div>
+            <div class="side-nav-item"><i class="fa-solid fa-mobile-screen"></i><span>LPU Touch</span></div>
+            <div class="side-nav-item"><i class="fa-solid fa-comments"></i><span>LPU Live</span></div>
+            <div class="side-nav-item"><i class="fa-solid fa-chalkboard-user"></i><span>My Class</span></div>
+            <div class="side-nav-item"><i class="fa-solid fa-user-group"></i><span>Dost</span></div>
+
+            <div class="side-nav-item research-twin-btn" onclick="openResearchTwin()">
+                <i class="fa-solid fa-brain"></i>
+                <span>ResearchTwin</span>
+            </div>
+        </div>
+
+        <div class="dashboard-container">
+            <div class="section-header">Important Links</div>
+
+            <div class="links-pill-grid">
+                <button class="pill-btn pill-orange"><i class="fa-solid fa-hotel"></i> Hostel Booking</button>
+                <button class="pill-btn pill-orange"><i class="fa-solid fa-graduation-cap"></i> Apply for Edu-Revolution</button>
+                <button class="pill-btn pill-blue"><i class="fa-solid fa-headset"></i> RMS</button>
+                <button class="pill-btn pill-blue"><i class="fa-solid fa-receipt"></i> Fee Dashboard</button>
+                <button class="pill-btn pill-orange"><i class="fa-solid fa-book"></i> Issued Books</button>
+                <button class="pill-btn pill-blue"><i class="fa-solid fa-calendar"></i> Academic Calendar</button>
+
+                <button class="pill-btn pill-gold" onclick="openResearchTwin()"><i class="fa-solid fa-wand-magic-sparkles"></i> ResearchTwin 2.0</button>
+            </div>
+
+            <!-- LPU PLACEMENT BANNER WITH FALLBACK -->
+            <div style="padding: 0; overflow: hidden; border-radius: 12px; margin-bottom: 30px; border: 1px solid var(--ums-border); background:#11141B;">
+                <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80" 
+                     alt="LPU Highest Placement Record" 
+                     style="width: 100%; max-height: 380px; object-fit: cover; display: block; border-radius: 12px;"
+                     onerror="this.onerror=null; this.src='https://via.placeholder.com/1200x380/D96500/FFFFFF?text=LPU+Highest+Placement+Record';">
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Selection Modal -->
+    <div id="roleModal" class="modal-overlay">
+        <div class="role-modal">
+            <h3 style="color:var(--ums-side-bg); margin-bottom:10px;"><i class="fa-solid fa-brain"></i> Access ResearchTwin 2.0</h3>
+            <p style="font-size:13px; color:var(--ums-text-sub); margin-bottom:20px;">Please select your login type to proceed into the research portal:</p>
+            
+            <button class="role-btn" style="background:var(--ums-side-bg); color:white;" onclick="goToLogin('student')">
+                <i class="fa-solid fa-graduation-cap"></i> Student Login
+            </button>
+            <button class="role-btn" style="background:var(--ums-blue-btn); color:white;" onclick="goToLogin('faculty')">
+                <i class="fa-solid fa-chalkboard-user"></i> Faculty Login
+            </button>
+            
+            <button onclick="closeRoleModal()" style="background:transparent; border:none; color:var(--ums-text-sub); margin-top:15px; cursor:pointer; font-size:12px;">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        function openResearchTwin() {
+            const user = sessionStorage.getItem("user");
+            if (user) {
+                window.location.href = "researchtwin.html";
+            } else {
+                document.getElementById('roleModal').style.display = "flex";
+            }
+        }
+
+        function openRoleSelection() {
+            document.getElementById('roleModal').style.display = "flex";
+        }
+
+        function closeRoleModal() {
+            document.getElementById('roleModal').style.display = "none";
+        }
+
+        function goToLogin(role) {
+            if (role === 'student') {
+                window.location.href = "student_login.html";
+            } else {
+                window.location.href = "faculty_login.html";
+            }
+        }
+
+        window.onload = function() {
+            const user = JSON.parse(sessionStorage.getItem("user") || "null");
+            if (user) {
+                document.getElementById('userStatus').innerText = `${user.name} (${user.user_id})`;
+            }
+        };
+    </script>
+</body>
+</html>

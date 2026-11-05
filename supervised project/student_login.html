@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login - ResearchTwin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0F1117;
+            --bg-card: #1A1D26;
+            --primary: #D96500;
+            --text-sub: #A0A5B5;
+            --border: #2A2E3D;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: var(--bg-dark); color: white; display: flex; align-items: center; justify-content: center; height: 100vh; }
+
+        /* Login Card Container */
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 380px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .header { text-align: center; margin-bottom: 25px; }
+        .header i { font-size: 36px; color: var(--primary); margin-bottom: 10px; }
+        .header h2 { font-size: 22px; font-weight: 700; }
+        .header p { font-size: 13px; color: var(--text-sub); margin-top: 5px; }
+
+        label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #12141D;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        .btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn:hover { background: #B55200; }
+
+        .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-sub); }
+        .footer-link a { color: var(--primary); text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="header">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <h2>Student Portal Login</h2>
+            <p>ResearchTwin 2.0 Ecosystem</p>
+        </div>
+
+        <!-- Student Login Form -->
+        <form onsubmit="handleStudentLogin(event)">
+            <label>Student Reg No / ID</label>
+            <input type="text" id="studentId" value="S001" required>
+
+            <label>Password (Default: 123)</label>
+            <input type="password" id="studentPass" value="123" required>
+
+            <button type="submit" class="btn">Login as Student</button>
+        </form>
+
+        <div class="footer-link">
+            Are you a faculty member? <a href="faculty_login.html">Faculty Login</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        // Function handling Student Authentication
+        async function handleStudentLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('studentId').value;
+            const pass = document.getElementById('studentPass').value;
+
+            try {
+                // Send credentials to backend login API
+                const res = await fetch(`${API_BASE}/api/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: id, password: pass, role: "student" })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Save user session in browser memory and redirect to main portal
+                    sessionStorage.setItem("user", JSON.stringify(data));
+                    window.location.href = "researchtwin.html";
+                } else {
+                    alert(data.detail || "Invalid Student ID or Password");
+                }
+            } catch (err) {
+                alert("FastAPI Server offline. Run terminal command: uvicorn main:app --reload");
+            }
+        }
+    </script>
+</body>
+</html>

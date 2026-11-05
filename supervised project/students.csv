@@ -1,0 +1,3 @@
+student_id,name,password,research_areas,expertise,skills,projects,publications
+S001,Aishwarya,123,"Artificial Intelligence, Machine Learning","Deep Learning, NLP","Python, PyTorch, Transformers, SQL",ResearchTwin ML Engine,NLP Research
+S002,Student 2,123,"Computer Vision, Image Processing","CNNs, Object Detection","Python, OpenCV, TensorFlow",Vision AI System,Medical Imaging
