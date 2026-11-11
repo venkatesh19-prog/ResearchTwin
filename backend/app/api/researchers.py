@@ -2,13 +2,23 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Researcher
+from ..models import (
+    CollaborationRequest,
+    CollaborationWorkspace,
+    FacultyResearcherLink,
+    Opportunity,
+    ResearchClusterAssignment,
+    Researcher,
+    ResearcherVerification,
+    RoadmapProgress,
+)
 from ..schemas import ResearcherCreate, ResearcherResponse
+from ..services.audit import record_event
 from ..services.researcher_import import (
     ResearcherImportError,
     import_researchers,
@@ -23,6 +33,16 @@ router = APIRouter(
 )
 
 logger = logging.getLogger("researchtwin.researchers")
+
+RESEARCHER_DEPENDENTS = (
+    ("verification history", ResearcherVerification),
+    ("faculty links", FacultyResearcherLink),
+    ("collaboration requests", CollaborationRequest),
+    ("collaboration workspaces", CollaborationWorkspace),
+    ("opportunities", Opportunity),
+    ("cluster assignments", ResearchClusterAssignment),
+    ("roadmap progress", RoadmapProgress),
+)
 
 
 def _contains(expression, term: str):
@@ -185,10 +205,11 @@ def update_researcher(
 def delete_researcher(
     researcher_id: int,
     db: Session = Depends(get_db),
-    _admin=Depends(require_admin),
+    admin=Depends(require_admin),
 ):
     researcher = (
         db.query(Researcher)
+        .with_for_update()
         .filter(Researcher.id == researcher_id)
         .first()
     )
@@ -199,6 +220,35 @@ def delete_researcher(
             detail="Researcher not found"
         )
 
+    dependents = []
+    for label, model in RESEARCHER_DEPENDENTS:
+        count = (
+            db.query(func.count(model.id))
+            .filter(model.researcher_id == researcher.id)
+            .scalar()
+            or 0
+        )
+        if count:
+            dependents.append(f"{label} ({count})")
+
+    if dependents:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Researcher has dependent records: "
+                + ", ".join(dependents)
+                + ". Remove or reassign them before deletion."
+            ),
+        )
+
+    record_event(
+        db,
+        actor=admin,
+        action="researcher.delete",
+        target_type="researcher",
+        target_id=researcher.id,
+        detail={"name": researcher.name},
+    )
     db.delete(researcher)
     db.commit()
 

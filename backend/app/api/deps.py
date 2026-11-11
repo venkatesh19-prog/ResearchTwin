@@ -44,6 +44,25 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Resolve a bearer token when present, otherwise stay anonymous."""
+    if credentials is None:
+        return None
+
+    session = get_active_session(db, credentials.credentials)
+    if session is None:
+        return None
+
+    user = db.get(User, session.user_id)
+    if user is None or not user.is_active:
+        return None
+
+    return user
+
+
 def require_role(*roles: str):
     def dependency(user: User = Depends(get_current_user)) -> User:
         if user.role not in roles:

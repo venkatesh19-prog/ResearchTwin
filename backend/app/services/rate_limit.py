@@ -34,6 +34,16 @@ RECOMMENDATION_MAX = _positive_setting("RATE_LIMIT_RECOMMENDATION_MAX", 8)
 RECOMMENDATION_WINDOW_SECONDS = _positive_setting(
     "RATE_LIMIT_RECOMMENDATION_WINDOW_SECONDS", 300
 )
+NETWORK_MAX = _positive_setting("RATE_LIMIT_NETWORK_MAX", 6)
+NETWORK_WINDOW_SECONDS = _positive_setting(
+    "RATE_LIMIT_NETWORK_WINDOW_SECONDS", 60
+)
+OPPORTUNITY_APPLY_MAX = _positive_setting(
+    "RATE_LIMIT_OPPORTUNITY_APPLY_MAX", 20
+)
+OPPORTUNITY_APPLY_WINDOW_SECONDS = _positive_setting(
+    "RATE_LIMIT_OPPORTUNITY_APPLY_WINDOW_SECONDS", 3600
+)
 
 _last_prune_day: int | None = None
 
@@ -114,6 +124,53 @@ def _bucket_hash(scope: str, principal_kind: str, principal: str) -> str:
     return hmac.new(secret, payload, hashlib.sha256).hexdigest()
 
 
+def _write_counters(
+    db: Session,
+    insert,
+    *,
+    scope: str,
+    principals: tuple[tuple[str, str], ...],
+    window_start: int,
+    now: int,
+    limit: int,
+) -> bool:
+    counter = RateLimitCounter.__table__
+    exceeded = False
+
+    global _last_prune_day
+    day = now // 86_400
+    if _last_prune_day != day:
+        db.execute(
+            delete(counter).where(counter.c.updated_at < now - 7 * 86_400)
+        )
+        _last_prune_day = day
+
+    for principal_kind, principal in principals:
+        key = _bucket_hash(scope, principal_kind, principal)
+        statement = insert(counter).values(
+            bucket_hash=key,
+            window_start=window_start,
+            count=1,
+            updated_at=now,
+        )
+        next_count = case(
+            (counter.c.window_start == window_start, counter.c.count + 1),
+            else_=1,
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=[counter.c.bucket_hash],
+            set_={
+                "window_start": window_start,
+                "count": next_count,
+                "updated_at": now,
+            },
+        ).returning(counter.c.count)
+        count = db.execute(statement).scalar_one()
+        exceeded = exceeded or count > limit
+
+    return exceeded
+
+
 def enforce_rate_limit(
     db: Session,
     request: Request,
@@ -132,7 +189,6 @@ def enforce_rate_limit(
 
     now = int(time.time())
     window_start = now - (now % window_seconds)
-    counter = RateLimitCounter.__table__
     dialect = db.get_bind().dialect.name
 
     if (
@@ -155,43 +211,48 @@ def enforce_rate_limit(
         )
 
     principals = (("ip", client_ip_identity(request)),) + identities
-    exceeded = False
 
     try:
-        global _last_prune_day
-        day = now // 86_400
-        if _last_prune_day != day:
-            db.execute(
-                delete(counter).where(counter.c.updated_at < now - 7 * 86_400)
-            )
-            _last_prune_day = day
-
-        for principal_kind, principal in principals:
-            key = _bucket_hash(scope, principal_kind, principal)
-            statement = insert(counter).values(
-                bucket_hash=key,
+        if dialect == "postgresql":
+            # Counters live in their own transaction so a later 429 or route
+            # failure cannot roll them back and a route write is never committed
+            # early. While the limiter runs, the request session and this
+            # session each hold a pooled connection, so the default 5 + 10 pool
+            # fits at most seven overlapping limiter steps (verified on
+            # PostgreSQL 18). SQLite keeps the request session to avoid
+            # write-lock contention with its request-long read transaction.
+            bind = getattr(db.get_bind(), "engine", db.get_bind())
+            limiter_db = Session(bind=bind)
+            try:
+                exceeded = _write_counters(
+                    limiter_db,
+                    insert,
+                    scope=scope,
+                    principals=principals,
+                    window_start=window_start,
+                    now=now,
+                    limit=limit,
+                )
+                limiter_db.commit()
+            except SQLAlchemyError:
+                limiter_db.rollback()
+                raise
+            finally:
+                limiter_db.close()
+        else:
+            exceeded = _write_counters(
+                db,
+                insert,
+                scope=scope,
+                principals=principals,
                 window_start=window_start,
-                count=1,
-                updated_at=now,
+                now=now,
+                limit=limit,
             )
-            next_count = case(
-                (counter.c.window_start == window_start, counter.c.count + 1),
-                else_=1,
-            )
-            statement = statement.on_conflict_do_update(
-                index_elements=[counter.c.bucket_hash],
-                set_={
-                    "window_start": window_start,
-                    "count": next_count,
-                    "updated_at": now,
-                },
-            ).returning(counter.c.count)
-            count = db.execute(statement).scalar_one()
-            exceeded = exceeded or count > limit
-
-        db.commit()
+            db.commit()
     except SQLAlchemyError as exc:
-        db.rollback()
+        if dialect != "postgresql":
+            db.rollback()
         raise HTTPException(
             status_code=503,
             detail="Request protection is temporarily unavailable",

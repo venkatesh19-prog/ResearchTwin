@@ -4,7 +4,7 @@ SQLite backups use the sqlite3 online-backup API, so they are safe while the
 application is running. PostgreSQL backups shell out to ``pg_dump`` and never
 connect through the application. Restores always write to a new path; this tool
 refuses to overwrite an existing database. PostgreSQL restores stay a reviewed
-manual operation (see ``DISASTER_RECOVERY.md``).
+manual operation (see ``Backups and restore`` in the root ``README.md``).
 
 Usage (run from ``backend``):
 
@@ -67,7 +67,7 @@ def sqlite_path(source: str | os.PathLike[str] | None = None) -> Path:
     if parsed.drivername != "sqlite":
         raise BackupError(
             "The configured database is PostgreSQL; pass --database-url for a "
-            "pg_dump backup or review DISASTER_RECOVERY.md"
+            "pg_dump backup or review 'Backups and restore' in the root README.md"
         )
     if not parsed.database:
         raise BackupError("The SQLite URL does not include a file path")
@@ -309,7 +309,7 @@ def _require_sqlite_archive(backup: Path) -> None:
             raise BackupError(
                 "This restore command accepts SQLite backups only. PostgreSQL "
                 "archives are restored manually with pg_restore after review; "
-                "see DISASTER_RECOVERY.md"
+                "see 'Backups and restore' in the root README.md"
             )
 
     try:

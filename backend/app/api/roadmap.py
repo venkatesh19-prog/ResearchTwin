@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Researcher, RoadmapProgress, StudentProfile, User
 from ..schemas import RoadmapProgressUpdate
+from ..services.expertise_gap import analyze as analyze_expertise_gaps
 from ..services.readiness_roadmap import build_student_roadmap
 from ..services.skill_gap import calculate_skill_gap
+from ..services.verification import latest_by_researcher
 from .deps import require_student
 
 router = APIRouter(tags=["Roadmap"])
@@ -85,6 +87,29 @@ def _roadmap(
         completed_milestones=_completed_milestones(
             db, user.id, researcher.id
         ),
+    )
+
+
+@router.get("/students/me/expertise-gaps")
+def get_my_expertise_gaps(
+    limit: int = Query(default=25, ge=1, le=100),
+    verified_only: bool = False,
+    user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """Compare the saved profile with the whole directory, not one researcher."""
+    profile = _get_profile(db, user.id)
+    researchers = db.query(Researcher).order_by(Researcher.id).all()
+    verification = latest_by_researcher(
+        db, [researcher.id for researcher in researchers]
+    )
+
+    return analyze_expertise_gaps(
+        profile,
+        researchers,
+        verification,
+        limit=limit,
+        verified_only=verified_only,
     )
 
 

@@ -127,7 +127,7 @@ def update_my_student_profile(
         profile = StudentProfile(user_id=user.id, updated_at=int(time.time()))
         db.add(profile)
 
-    for field, value in payload.model_dump().items():
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(profile, field, value.strip())
 
     profile.updated_at = int(time.time())
@@ -240,7 +240,7 @@ def update_my_faculty_profile(
         profile = FacultyProfile(user_id=user.id, updated_at=int(time.time()))
         db.add(profile)
 
-    for field, value in payload.model_dump().items():
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(profile, field, value.strip())
 
     profile.updated_at = int(time.time())

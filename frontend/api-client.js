@@ -304,8 +304,19 @@
             });
         }
 
-        function getResearchers() {
-            return request("/researchers/", { auth: false });
+        function getResearchers(params) {
+            return request(withQuery("/researchers/", params), { auth: false });
+        }
+
+        function getSearchHistory(limit = 10) {
+            return request(withQuery("/search-history", { limit }));
+        }
+
+        function recordSearch(query) {
+            return request("/search-history", {
+                method: "POST",
+                body: { query },
+            });
         }
 
         function getRoadmap(researcherId) {
@@ -333,8 +344,8 @@
             });
         }
 
-        function listMyCollaborationRequests() {
-            return request("/students/me/collaboration-requests");
+        function listMyCollaborationRequests(params) {
+            return request(withQuery("/students/me/collaboration-requests", params));
         }
 
         function getFacultyResearcherLink() {
@@ -348,9 +359,11 @@
             });
         }
 
-        function listFacultyCollaborationRequests(status) {
-            const query = status ? `?status=${encodeURIComponent(status)}` : "";
-            return request(`/faculty/me/collaboration-requests${query}`);
+        function listFacultyCollaborationRequests(status, params) {
+            return request(withQuery("/faculty/me/collaboration-requests", {
+                ...(status ? { status } : {}),
+                ...(params || {})
+            }));
         }
 
         function decideCollaborationRequest(requestId, decision, response) {
@@ -445,6 +458,626 @@
             });
         }
 
+        // --------------------------------------------------
+        // RESEARCHTWIN 2.0
+        // --------------------------------------------------
+
+        function getMyVerification() {
+            return request("/faculty/me/researcher-link/verification");
+        }
+
+        function submitMyVerification(payload) {
+            return request("/faculty/me/researcher-link/verification", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function listAdminVerifications(params) {
+            return request(withQuery("/admin/verifications", params));
+        }
+
+        function decideVerification(verificationId, payload) {
+            return request(
+                `/admin/verifications/${encodeURIComponent(verificationId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function listResearcherVerifications(researcherId) {
+            return request(
+                `/admin/researchers/${encodeURIComponent(researcherId)}/verifications`
+            );
+        }
+
+        function listMyWorkspaces() {
+            return request("/workspaces/me");
+        }
+
+        function getWorkspace(workspaceId) {
+            return request(`/workspaces/${encodeURIComponent(workspaceId)}`);
+        }
+
+        function listWorkspaceTasks(workspaceId) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/tasks`
+            );
+        }
+
+        function createWorkspaceTask(workspaceId, payload) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/tasks`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function updateWorkspaceTask(workspaceId, taskId, payload) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/tasks/${encodeURIComponent(taskId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deleteWorkspaceTask(workspaceId, taskId) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/tasks/${encodeURIComponent(taskId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function listWorkspaceComments(workspaceId, params) {
+            return request(
+                withQuery(`/workspaces/${encodeURIComponent(workspaceId)}/comments`, params)
+            );
+        }
+
+        function createWorkspaceComment(workspaceId, payload) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/comments`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function deleteWorkspaceComment(workspaceId, commentId) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/comments/${encodeURIComponent(commentId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function listWorkspaceMilestones(workspaceId) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/milestones`
+            );
+        }
+
+        function createWorkspaceMilestone(workspaceId, payload) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/milestones`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function updateWorkspaceMilestone(workspaceId, milestoneId, payload) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/milestones/${encodeURIComponent(milestoneId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deleteWorkspaceMilestone(workspaceId, milestoneId) {
+            return request(
+                `/workspaces/${encodeURIComponent(workspaceId)}/milestones/${encodeURIComponent(milestoneId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function createTeam(payload) {
+            return request("/teams", { method: "POST", body: payload });
+        }
+
+        function listMyTeams() {
+            return request("/teams/me");
+        }
+
+        function getTeam(teamId) {
+            return request(`/teams/${encodeURIComponent(teamId)}`);
+        }
+
+        function deleteTeam(teamId) {
+            return request(`/teams/${encodeURIComponent(teamId)}`, {
+                method: "DELETE",
+            });
+        }
+
+        function inviteToTeam(teamId, payload) {
+            return request(`/teams/${encodeURIComponent(teamId)}/invitations`, {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function decideTeamInvitation(teamId, invitationId, payload) {
+            return request(
+                `/teams/${encodeURIComponent(teamId)}/invitations/${encodeURIComponent(invitationId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function removeTeamMember(teamId, userId) {
+            return request(
+                `/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function getTeamRecommendations(teamId, payload) {
+            return request(
+                `/teams/${encodeURIComponent(teamId)}/recommendations`,
+                { method: "POST", body: payload || {} }
+            );
+        }
+
+        function searchOpportunities(params) {
+            return request(withQuery("/opportunities", params));
+        }
+
+        function listMyOpportunities(params) {
+            return request(withQuery("/opportunities/mine", params));
+        }
+
+        function createOpportunity(payload) {
+            return request("/opportunities", { method: "POST", body: payload });
+        }
+
+        function getOpportunity(opportunityId) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}`
+            );
+        }
+
+        function updateOpportunity(opportunityId, payload) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deleteOpportunity(opportunityId) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function getOpportunityEligibility(opportunityId) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}/eligibility`
+            );
+        }
+
+        function matchOpportunities(payload) {
+            return request("/students/me/opportunity-matches", {
+                method: "POST",
+                body: payload || {},
+            });
+        }
+
+        function applyToOpportunity(opportunityId, payload) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}/applications`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function listMyApplications(params) {
+            return request(
+                withQuery("/students/me/opportunity-applications", params)
+            );
+        }
+
+        function listOpportunityApplications(opportunityId, params) {
+            return request(
+                withQuery(
+                    `/opportunities/${encodeURIComponent(opportunityId)}/applications`,
+                    params
+                )
+            );
+        }
+
+        function decideOpportunityApplication(opportunityId, applicationId, payload) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}/applications/${encodeURIComponent(applicationId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function withdrawMyApplication(opportunityId) {
+            return request(
+                `/opportunities/${encodeURIComponent(opportunityId)}/applications/me`,
+                { method: "DELETE" }
+            );
+        }
+
+        function listOpportunitySources() {
+            return request("/admin/opportunities/sources");
+        }
+
+        function importOpportunities(payload) {
+            return request("/admin/opportunities/import", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function getUniversityAnalytics() {
+            return request("/analytics/university");
+        }
+
+        function getDepartmentAnalytics(params) {
+            return request(withQuery("/analytics/departments", params));
+        }
+
+        function getResearchNetwork(params) {
+            return request(
+                withQuery("/research-intelligence/network", params)
+            );
+        }
+
+        function getResearchClusters() {
+            return request("/research-intelligence/clusters");
+        }
+
+        function rebuildResearchClusters(payload) {
+            return request("/research-intelligence/clusters/rebuild", {
+                method: "POST",
+                body: payload || {},
+            });
+        }
+
+        function predictTopics(payload) {
+            return request("/research-intelligence/topics/predict", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function getResearchTrends(params) {
+            return request(
+                withQuery("/research-intelligence/trends", params)
+            );
+        }
+
+        function getKnowledgeGraph(params) {
+            return request(
+                withQuery("/research-intelligence/knowledge-graph", params)
+            );
+        }
+
+        function listLiterature(params) {
+            return request(withQuery("/literature", params));
+        }
+
+        function createLiteratureEntry(payload) {
+            return request("/literature", { method: "POST", body: payload });
+        }
+
+        function getLiteratureEntry(entryId) {
+            return request(`/literature/${encodeURIComponent(entryId)}`);
+        }
+
+        function updateLiteratureEntry(entryId, payload) {
+            return request(`/literature/${encodeURIComponent(entryId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        }
+
+        function deleteLiteratureEntry(entryId) {
+            return request(`/literature/${encodeURIComponent(entryId)}`, {
+                method: "DELETE",
+            });
+        }
+
+        function listProposals(params) {
+            return request(withQuery("/proposals", params));
+        }
+
+        function createProposal(payload) {
+            return request("/proposals", { method: "POST", body: payload });
+        }
+
+        function getProposal(proposalId) {
+            return request(`/proposals/${encodeURIComponent(proposalId)}`);
+        }
+
+        function updateProposal(proposalId, payload) {
+            return request(`/proposals/${encodeURIComponent(proposalId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        }
+
+        function deleteProposal(proposalId) {
+            return request(`/proposals/${encodeURIComponent(proposalId)}`, {
+                method: "DELETE",
+            });
+        }
+
+        function addProposalCollaborator(proposalId, payload) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/collaborators`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function removeProposalCollaborator(proposalId, userId) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/collaborators/${encodeURIComponent(userId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function addProposalSection(proposalId, payload) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/sections`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function updateProposalSection(proposalId, sectionId, payload) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/sections/${encodeURIComponent(sectionId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deleteProposalSection(proposalId, sectionId) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/sections/${encodeURIComponent(sectionId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function addProposalCitation(proposalId, payload) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/citations`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function deleteProposalCitation(proposalId, citationId) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/citations/${encodeURIComponent(citationId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function listProposalVersions(proposalId, params) {
+            return request(
+                withQuery(`/proposals/${encodeURIComponent(proposalId)}/versions`, params)
+            );
+        }
+
+        function getProposalVersion(proposalId, version) {
+            return request(
+                `/proposals/${encodeURIComponent(proposalId)}/versions/${encodeURIComponent(version)}`
+            );
+        }
+
+        function listTheses(params) {
+            return request(withQuery("/theses", params));
+        }
+
+        function createThesis(payload) {
+            return request("/theses", { method: "POST", body: payload });
+        }
+
+        function getThesis(thesisId) {
+            return request(`/theses/${encodeURIComponent(thesisId)}`);
+        }
+
+        function updateThesis(thesisId, payload) {
+            return request(`/theses/${encodeURIComponent(thesisId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        }
+
+        function deleteThesis(thesisId) {
+            return request(`/theses/${encodeURIComponent(thesisId)}`, {
+                method: "DELETE",
+            });
+        }
+
+        function addThesisMilestone(thesisId, payload) {
+            return request(
+                `/theses/${encodeURIComponent(thesisId)}/milestones`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function updateThesisMilestone(thesisId, milestoneId, payload) {
+            return request(
+                `/theses/${encodeURIComponent(thesisId)}/milestones/${encodeURIComponent(milestoneId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deleteThesisMilestone(thesisId, milestoneId) {
+            return request(
+                `/theses/${encodeURIComponent(thesisId)}/milestones/${encodeURIComponent(milestoneId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function getThesisHistory(thesisId, params) {
+            return request(
+                withQuery(`/theses/${encodeURIComponent(thesisId)}/history`, params)
+            );
+        }
+
+        function listPublications(params) {
+            return request(withQuery("/publication-submissions", params));
+        }
+
+        function createPublication(payload) {
+            return request("/publication-submissions", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function getPublication(submissionId, params) {
+            return request(
+                withQuery(
+                    `/publication-submissions/${encodeURIComponent(submissionId)}`,
+                    params
+                )
+            );
+        }
+
+        function updatePublication(submissionId, payload) {
+            return request(
+                `/publication-submissions/${encodeURIComponent(submissionId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function deletePublication(submissionId) {
+            return request(
+                `/publication-submissions/${encodeURIComponent(submissionId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function updatePublicationStatus(submissionId, payload) {
+            return request(
+                `/publication-submissions/${encodeURIComponent(submissionId)}/status`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function addPublicationRevision(submissionId, payload) {
+            return request(
+                `/publication-submissions/${encodeURIComponent(submissionId)}/revisions`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function listLabs(params) {
+            return request(withQuery("/labs", params));
+        }
+
+        function createLab(payload) {
+            return request("/labs", { method: "POST", body: payload });
+        }
+
+        function getLab(labId) {
+            return request(`/labs/${encodeURIComponent(labId)}`);
+        }
+
+        function updateLab(labId, payload) {
+            return request(`/labs/${encodeURIComponent(labId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        }
+
+        function deleteLab(labId) {
+            return request(`/labs/${encodeURIComponent(labId)}`, {
+                method: "DELETE",
+            });
+        }
+
+        function listLabMembers(labId, params) {
+            return request(
+                withQuery(`/labs/${encodeURIComponent(labId)}/members`, params)
+            );
+        }
+
+        function addLabMember(labId, payload) {
+            return request(`/labs/${encodeURIComponent(labId)}/members`, {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function removeLabMember(labId, userId) {
+            return request(
+                `/labs/${encodeURIComponent(labId)}/members/${encodeURIComponent(userId)}`,
+                { method: "DELETE" }
+            );
+        }
+
+        function listCollaborations(params) {
+            return request(
+                withQuery("/interuniversity-collaborations", params)
+            );
+        }
+
+        function createCollaboration(payload) {
+            return request("/interuniversity-collaborations", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function getCollaboration(collaborationId) {
+            return request(
+                `/interuniversity-collaborations/${encodeURIComponent(collaborationId)}`
+            );
+        }
+
+        function updateCollaborationStatus(collaborationId, payload) {
+            return request(
+                `/interuniversity-collaborations/${encodeURIComponent(collaborationId)}/status`,
+                { method: "POST", body: payload }
+            );
+        }
+
+        function listInstitutions() {
+            return request("/institutions", { auth: false });
+        }
+
+        function getMyInstitution() {
+            return request("/institutions/me");
+        }
+
+        function createInstitution(payload) {
+            return request("/admin/institutions", {
+                method: "POST",
+                body: payload,
+            });
+        }
+
+        function renameInstitution(institutionId, payload) {
+            return request(
+                `/admin/institutions/${encodeURIComponent(institutionId)}`,
+                { method: "PUT", body: payload }
+            );
+        }
+
+        function listInstitutionMembers(institutionId) {
+            return request(
+                `/admin/institutions/${encodeURIComponent(institutionId)}/members`
+            );
+        }
+
+        function assignInstitutionMember(institutionId, userId) {
+            return request(
+                `/admin/institutions/${encodeURIComponent(institutionId)}/members/${encodeURIComponent(userId)}`,
+                { method: "PUT" }
+            );
+        }
+
+        function removeInstitutionMember(institutionId, userId) {
+            return request(
+                `/admin/institutions/${encodeURIComponent(institutionId)}/members/${encodeURIComponent(userId)}`,
+                { method: "DELETE" }
+            );
+        }
+
         return {
             baseUrl,
             login,
@@ -457,6 +1090,8 @@
             getFacultyProfile,
             saveFacultyProfile,
             getResearchers,
+            getSearchHistory,
+            recordSearch,
             getRoadmap,
             setRoadmapMilestone,
             createCollaborationRequest,
@@ -478,6 +1113,109 @@
             removeGroupMember,
             assignFacultyResearcherLink,
             removeFacultyResearcherLink,
+            getMyVerification,
+            submitMyVerification,
+            listAdminVerifications,
+            decideVerification,
+            listResearcherVerifications,
+            listMyWorkspaces,
+            getWorkspace,
+            listWorkspaceTasks,
+            createWorkspaceTask,
+            updateWorkspaceTask,
+            deleteWorkspaceTask,
+            listWorkspaceComments,
+            createWorkspaceComment,
+            deleteWorkspaceComment,
+            listWorkspaceMilestones,
+            createWorkspaceMilestone,
+            updateWorkspaceMilestone,
+            deleteWorkspaceMilestone,
+            createTeam,
+            listMyTeams,
+            getTeam,
+            deleteTeam,
+            inviteToTeam,
+            decideTeamInvitation,
+            removeTeamMember,
+            getTeamRecommendations,
+            searchOpportunities,
+            listMyOpportunities,
+            createOpportunity,
+            getOpportunity,
+            updateOpportunity,
+            deleteOpportunity,
+            getOpportunityEligibility,
+            matchOpportunities,
+            applyToOpportunity,
+            listMyApplications,
+            listOpportunityApplications,
+            decideOpportunityApplication,
+            withdrawMyApplication,
+            listOpportunitySources,
+            importOpportunities,
+            getUniversityAnalytics,
+            getDepartmentAnalytics,
+            getResearchNetwork,
+            getResearchClusters,
+            rebuildResearchClusters,
+            predictTopics,
+            getResearchTrends,
+            getKnowledgeGraph,
+            listLiterature,
+            createLiteratureEntry,
+            getLiteratureEntry,
+            updateLiteratureEntry,
+            deleteLiteratureEntry,
+            listProposals,
+            createProposal,
+            getProposal,
+            updateProposal,
+            deleteProposal,
+            addProposalCollaborator,
+            removeProposalCollaborator,
+            addProposalSection,
+            updateProposalSection,
+            deleteProposalSection,
+            addProposalCitation,
+            deleteProposalCitation,
+            listProposalVersions,
+            getProposalVersion,
+            listTheses,
+            createThesis,
+            getThesis,
+            updateThesis,
+            deleteThesis,
+            addThesisMilestone,
+            updateThesisMilestone,
+            deleteThesisMilestone,
+            getThesisHistory,
+            listPublications,
+            createPublication,
+            getPublication,
+            updatePublication,
+            deletePublication,
+            updatePublicationStatus,
+            addPublicationRevision,
+            listLabs,
+            createLab,
+            getLab,
+            updateLab,
+            deleteLab,
+            listLabMembers,
+            addLabMember,
+            removeLabMember,
+            listCollaborations,
+            createCollaboration,
+            getCollaboration,
+            updateCollaborationStatus,
+            listInstitutions,
+            getMyInstitution,
+            createInstitution,
+            renameInstitution,
+            listInstitutionMembers,
+            assignInstitutionMember,
+            removeInstitutionMember,
             clearSession,
             hasSession: () => Boolean(getToken()),
             setUnauthorizedHandler,

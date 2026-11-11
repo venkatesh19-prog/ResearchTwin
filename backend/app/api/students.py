@@ -36,7 +36,7 @@ class StudentProfile(BaseModel):
     publications: str = Field(default="", max_length=4000)
     top_k: int = Field(default=5, ge=1, le=10)
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
 
 @router.post("/researchers")
@@ -106,6 +106,8 @@ class RoadmapRequest(BaseModel):
     researcher_id: int
     matched_skills: list[str] = Field(default_factory=list)
     skill_gap: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 @router.post("/roadmap/researcher")

@@ -51,7 +51,7 @@ function harness(overrides = {}) {
     for (const m of html.matchAll(/<([a-z][\w-]*)\b([^>]*\bid="([^"]+)"[^>]*)>/gi)) { const el = new Element(m[1]); el.root = true; for (const a of m[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) el.setAttribute(a[1], a[2] ?? ''); nodes.set(m[3], el); }
     if (nodes.has('recommendationCount')) nodes.get('recommendationCount').value = '5';
     const document = { getElementById: id => nodes.get(id) || [...nodes.values()].flatMap(n => n.querySelectorAll('#' + id))[0] || null, createElement: tag => new Element(tag), querySelectorAll: s => { if (s.startsWith('#') && s.includes(' ')) { const [id, rest] = s.split(' '); return document.getElementById(id.slice(1))?.querySelectorAll(rest) || []; } return [...nodes.values()].filter(n => n.matches(s)); }, querySelector: s => document.querySelectorAll(s)[0] || null };
-    const api = { getStudentProfile: async () => ({ ...profile }), getFacultyProfile: async () => ({ ...faculty }), getRecommendations: async () => ({ recommendations: [], profile_completion: 100 }), getResearchers: async () => [], getFacultyResearcherLink: async () => ({ linked: false }), listFacultyCollaborationRequests: async () => ({ requests: [] }), setUnauthorizedHandler() {}, hasSession: () => false, ...overrides };
+    const api = { getStudentProfile: async () => ({ ...profile }), getFacultyProfile: async () => ({ ...faculty }), getRecommendations: async () => ({ recommendations: [], profile_completion: 100 }), getResearchers: async () => [], getSearchHistory: async () => [], recordSearch: async (query) => ({ id: 1, query, created_at: 1 }), getFacultyResearcherLink: async () => ({ linked: false }), listFacultyCollaborationRequests: async () => ({ requests: [] }), setUnauthorizedHandler() {}, hasSession: () => false, ...overrides };
     const context = vm.createContext({ window: { ResearchTwinAPI: api, addEventListener() {} }, document, URL, console });
     vm.runInContext(script, context);
     const run = code => vm.runInContext(code, context);
@@ -169,6 +169,22 @@ test('session restoration is visible and blocks auth submissions', async () => {
     assert.equal(h.$('loginBtn').disabled, true);
     pending.resolve(user('faculty')); await restoring; await tick();
     assert.equal(h.$('authShell').classList.contains('hidden'), true);
+});
+
+test('expired session restoration releases the login controls', async () => {
+    const h = harness({ hasSession: () => true, me: async () => { const error = new Error('expired'); error.kind = 'unauthorized'; throw error; } });
+    await h.context.init(); await tick();
+    assert.equal(h.$('authShell').classList.contains('hidden'), false);
+    assert.equal(h.$('loginBtn').disabled, false);
+    assert.equal(h.$('registerBtn').disabled, false);
+});
+
+test('failed session restoration releases the login controls', async () => {
+    const h = harness({ hasSession: () => true, me: async () => { throw new Error('offline'); } });
+    await h.context.init(); await tick();
+    assert.equal(h.$('authShell').classList.contains('hidden'), false);
+    assert.equal(h.$('loginBtn').disabled, false);
+    assert.equal(h.$('registerBtn').disabled, false);
 });
 
 test('logout invalidates session work immediately and blocks login until revocation settles', async () => {
@@ -297,7 +313,7 @@ test('admin console: role label, nav, and account list are wired to the admin AP
     assert.match(h.$('navMenu').innerHTML, /adminUsersView/);
     assert.match(h.$('navMenu').innerHTML, /adminAuditView/);
     assert.doesNotMatch(h.$('navMenu').innerHTML, /matchView|inboxView/);
-    assert.deepEqual({ ...filters }, {});
+    assert.deepEqual({ ...filters }, { limit: 200 });
     assert.match(h.$('adminUsersStatus').textContent, /3 accounts loaded/);
     assert.equal(h.$('adminUsersList').children.length, 3);
 
@@ -393,7 +409,7 @@ test('admin console: audit filters are sent to the API and events are rendered',
     h.$('adminAuditTargetId').value = '7';
     await h.context.loadAdminAudit();
 
-    assert.deepEqual({ ...filters }, { action: 'account.deactivate', target_type: 'user', target_id: 7 });
+    assert.deepEqual({ ...filters }, { action: 'account.deactivate', target_type: 'user', target_id: 7, limit: 200 });
     const rendered = h.$('adminAuditList').innerHTML;
     assert.match(rendered, /account\.deactivate/);
     assert.match(rendered, /admin@example\.org/);
@@ -422,4 +438,360 @@ test('admin views are part of the application shell', () => {
     assert.match(script, /role === "admin"/);
     assert.match(script, /loadAdminUsers\(\)/);
     assert.match(script, /loadAdminAudit\(\)/);
+});
+
+// ---- Batch 5: list completeness, stale responses, and contract failures ----
+
+test('admin lists request the maximum page and admit when results are truncated', async () => {
+    let userFilters, auditFilters;
+    const accounts = Array.from({ length: 200 }, (_, index) => ({
+        id: index + 1,
+        email: `user${index}@example.org`,
+        full_name: `User ${index}`,
+        role: 'student',
+        is_active: true,
+        created_at: 1
+    }));
+    const events = accounts.map(account => ({
+        id: account.id,
+        actor_user_id: 42,
+        actor_email: 'admin@example.org',
+        action: 'account.activate',
+        target_type: 'user',
+        target_id: account.id,
+        detail: '',
+        created_at: 1
+    }));
+    const h = harness({
+        listUsers: async filters => { userFilters = filters; return accounts; },
+        listAuditEvents: async filters => { auditFilters = filters; return events; },
+        getResearchers: async () => []
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    assert.deepEqual({ ...userFilters }, { limit: 200 });
+    assert.match(h.$('adminUsersStatus').textContent, /first 200/);
+    assert.match(h.$('adminUsersStatus').textContent, /refine/i);
+
+    await h.context.loadAdminAudit();
+
+    assert.deepEqual({ ...auditFilters }, { limit: 200 });
+    assert.match(h.$('adminAuditStatus').textContent, /first 200/);
+    assert.match(h.$('adminAuditStatus').textContent, /refine/i);
+});
+
+test('admin account load reports researcher directory failures instead of a false success', async () => {
+    const h = harness({
+        listUsers: async () => [{
+            id: 7, email: 'faculty@example.org', full_name: 'Faculty',
+            role: 'faculty', is_active: true, created_at: 1
+        }],
+        getResearchers: async () => { throw Error('directory offline'); }
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    assert.match(h.$('adminUsersStatus').textContent, /directory offline/);
+    assert.doesNotMatch(h.$('adminUsersStatus').textContent, /loaded/);
+    assert.equal(h.state.adminUsers, null);
+});
+
+test('directory asks for the server cap and discloses that more records may exist', async () => {
+    let params;
+    const capped = Array.from({ length: 500 }, (_, index) => ({
+        id: index + 1, name: `Researcher ${index}`, department: 'CS'
+    }));
+    const h = harness({ getResearchers: async value => { params = value; return capped; } });
+
+    await h.context.loadDirectory();
+
+    assert.deepEqual({ ...params }, { limit: 500 });
+    assert.match(h.$('directoryStatus').textContent, /first 500/);
+    assert.match(h.$('directoryStatus').textContent, /may be more|may contain more/i);
+
+    const short = harness({ getResearchers: async () => capped.slice(0, 4) });
+    await short.context.loadDirectory();
+    assert.match(short.$('directoryStatus').textContent, /Showing all 4 researchers/);
+});
+
+test('a stale collaboration list response cannot overwrite a newer load', async () => {
+    const first = deferred(), second = deferred();
+    let calls = 0;
+    const h = harness({
+        listMyCollaborationRequests: () => {
+            calls += 1;
+            return calls === 1 ? first.promise : second.promise;
+        }
+    });
+
+    const oldLoad = h.context.loadMyRequests();
+    const newLoad = h.context.loadMyRequests();
+
+    second.resolve({
+        requests: [{ id: 2, researcher: { name: 'NEW' }, status: 'pending', message: 'new', created_at: 2 }],
+        total: 1
+    });
+    await newLoad;
+    await tick();
+
+    first.resolve({
+        requests: [{ id: 1, researcher: { name: 'OLD' }, status: 'pending', message: 'old', created_at: 1 }],
+        total: 1
+    });
+    await oldLoad;
+    await tick();
+
+    const rendered = h.$('requestsList').children.map(child => child.innerHTML).join('');
+    assert.match(rendered, /NEW/);
+    assert.doesNotMatch(rendered, /OLD/);
+});
+
+test('a stale inbox response cannot overwrite a newer load', async () => {
+    const first = deferred(), second = deferred();
+    let loads = 0;
+    const h = harness({
+        getFacultyResearcherLink: async () => ({ linked: true, researcher: { id: 1, name: 'Ada' } }),
+        listFacultyCollaborationRequests: () => {
+            loads += 1;
+            return loads === 1 ? first.promise : second.promise;
+        }
+    });
+
+    const oldLoad = h.context.loadFacultyInbox();
+    await tick();
+    const newLoad = h.context.loadFacultyInbox();
+    await tick();
+
+    second.resolve({
+        requests: [{ id: 2, student: { full_name: 'NEW STUDENT' }, status: 'pending', message: 'new' }],
+        total: 1
+    });
+    await newLoad;
+    await tick();
+
+    first.resolve({
+        requests: [{ id: 1, student: { full_name: 'OLD STUDENT' }, status: 'pending', message: 'old' }],
+        total: 1
+    });
+    await oldLoad;
+    await tick();
+
+    const rendered = h.$('inboxList').children.map(child => child.innerHTML).join('');
+    assert.match(rendered, /NEW STUDENT/);
+    assert.doesNotMatch(rendered, /OLD STUDENT/);
+});
+
+test('malformed list envelopes are reported as protocol errors, not empty successes', async () => {
+    const h = harness({
+        listMyCollaborationRequests: async () => ({ requests: 'not-a-list' })
+    });
+    await h.context.loadMyRequests();
+    assert.match(h.$('requestsStatus').textContent, /unexpected/i);
+    assert.doesNotMatch(h.$('requestsList').textContent, /not sent any/i);
+
+    const inbox = harness({
+        getFacultyResearcherLink: async () => ({ linked: true, researcher: { id: 1, name: 'Ada' } }),
+        listFacultyCollaborationRequests: async () => ({ requests: null })
+    });
+    await inbox.context.loadFacultyInbox();
+    assert.match(inbox.$('inboxStatus').textContent, /unexpected/i);
+    assert.doesNotMatch(inbox.$('inboxList').textContent, /No student requests/i);
+
+    const admin = harness({
+        listUsers: async () => ({ accounts: [] }),
+        getResearchers: async () => []
+    });
+    await admin.context.enterApp(user('admin'));
+    await tick();
+    assert.match(admin.$('adminUsersStatus').textContent, /unexpected/i);
+    assert.equal(admin.state.adminUsers, null);
+});
+
+test('a malformed recommendation envelope is rejected instead of rendered as empty', async () => {
+    const h = harness({
+        getStudentProfile: async () => ({ ...profile }),
+        getRecommendations: async () => ({ recommendations: 'not-a-list', profile_completion: 100 })
+    });
+    h.state.user = user('student');
+
+    await h.context.refreshRecommendations();
+
+    assert.match(h.$('matchStatus').textContent, /unexpected/i);
+    assert.doesNotMatch(h.$('matchesContainer').textContent, /No researchers found/);
+});
+
+test('collaboration lists page with load-more controls instead of silently truncating', async () => {
+    const calls = [];
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+        id: index + 1,
+        researcher: { name: `Researcher ${index}` },
+        status: 'pending',
+        message: 'hello',
+        created_at: 1
+    }));
+    const lastPage = [{
+        id: 51,
+        researcher: { name: 'Researcher 50' },
+        status: 'pending',
+        message: 'hello',
+        created_at: 1
+    }];
+    const h = harness({
+        listMyCollaborationRequests: async params => {
+            calls.push(params);
+            return calls.length === 1
+                ? { requests: firstPage, total: 51, offset: 0, limit: 50 }
+                : { requests: lastPage, total: 51, offset: 50, limit: 50 };
+        }
+    });
+
+    await h.context.loadMyRequests();
+
+    assert.deepEqual({ ...calls[0] }, { offset: 0, limit: 50 });
+    assert.match(h.$('requestsStatus').textContent, /50 of 51/);
+    const more = h.$('requestsList').children.find(child => child.tagName === 'BUTTON');
+    assert.ok(more, 'truncated lists must offer a load-more control');
+
+    more.listeners.click();
+    more.listeners.click();
+    await tick();
+
+    assert.equal(calls.length, 2, 'duplicate load-more clicks must not fetch twice');
+    assert.deepEqual({ ...calls[1] }, { offset: 50, limit: 50 });
+    assert.equal(
+        h.$('requestsList').children.filter(child => child.classList.contains('request-item')).length,
+        51
+    );
+    assert.equal(
+        h.$('requestsList').children.some(child => child.tagName === 'BUTTON'),
+        false
+    );
+});
+
+test('the faculty inbox loads additional pages on request', async () => {
+    const calls = [];
+    const h = harness({
+        getFacultyResearcherLink: async () => ({ linked: true, researcher: { id: 1, name: 'Ada' } }),
+        listFacultyCollaborationRequests: async (status, params) => {
+            calls.push(params);
+            return calls.length === 1
+                ? { requests: [{ id: 1, student: { full_name: 'Student A' }, status: 'pending', message: 'a' }], total: 2, offset: 0, limit: 50 }
+                : { requests: [{ id: 2, student: { full_name: 'Student B' }, status: 'pending', message: 'b' }], total: 2, offset: 1, limit: 50 };
+        }
+    });
+
+    await h.context.loadFacultyInbox();
+
+    assert.deepEqual({ ...calls[0] }, { offset: 0, limit: 50 });
+    assert.match(h.$('inboxStatus').textContent, /1 of 2/);
+    const more = h.$('inboxList').children.find(child => child.tagName === 'BUTTON');
+    assert.ok(more);
+
+    more.listeners.click();
+    await tick();
+
+    assert.deepEqual({ ...calls[1] }, { offset: 1, limit: 50 });
+    const rendered = h.$('inboxList').children.map(child => child.innerHTML).join('');
+    assert.match(rendered, /Student A/);
+    assert.match(rendered, /Student B/);
+});
+
+test('admin data export ignores duplicate submissions while one is pending', async () => {
+    const pending = deferred();
+    let exports = 0;
+    const h = harness({
+        listUsers: async () => [{
+            id: 7, email: 'student@example.org', full_name: 'Student',
+            role: 'student', is_active: true, created_at: 1
+        }],
+        getResearchers: async () => [],
+        exportUserData: () => { exports += 1; return pending.promise; }
+    });
+
+    await h.context.enterApp(user('admin'));
+    await tick();
+
+    const first = h.context.adminExportData(7);
+    const second = h.context.adminExportData(7);
+    assert.equal(exports, 1);
+
+    pending.resolve({ generated_at: 2 });
+    await Promise.all([first, second]);
+    await tick();
+
+    assert.equal(exports, 1);
+    assert.match(h.$('adminUserStatus-7').textContent, /export ready/i);
+});
+
+test('directory search history loads, replays, and records committed queries', async () => {
+    const recorded = [];
+    const h = harness({
+        hasSession: () => true,
+        getResearchers: async () => [{
+            id: 1, name: 'Dr. Ada', department: 'CS',
+            research_areas: 'Machine Learning', skills: 'Python'
+        }],
+        getSearchHistory: async () => ([
+            { id: 2, query: 'Machine Learning', created_at: 200 },
+            { id: 1, query: 'AI', created_at: 100 }
+        ]),
+        recordSearch: async (query) => {
+            recorded.push(query);
+            return { id: 3, query, created_at: 300 };
+        }
+    });
+
+    await h.start('student');
+    h.context.switchView('directoryView');
+    await tick();
+
+    const panel = h.$('recentSearches');
+    const list = h.$('recentSearchList');
+    assert.equal(panel.classList.contains('hidden'), false);
+    assert.equal(list.children.length, 2);
+    assert.equal(list.children[0].textContent, 'Machine Learning');
+
+    list.children[0].listeners.click();
+    assert.equal(h.$('facSearch').value, 'Machine Learning');
+    assert.match(h.$('directoryStatus').textContent, /Showing 1 of/);
+
+    const input = h.$('facSearch');
+    input.value = 'computer vision';
+    h.context.recordDirectorySearch();
+    await tick();
+    assert.deepEqual(recorded, ['computer vision']);
+    assert.equal(list.children[0].textContent, 'computer vision');
+
+    input.value = 'a';
+    h.context.recordDirectorySearch();
+    await tick();
+    assert.deepEqual(recorded, ['computer vision']);
+});
+
+test('anonymous directory visits do not load or show search history', async () => {
+    let calls = 0;
+    const h = harness({
+        hasSession: () => false,
+        getSearchHistory: async () => { calls += 1; return []; }
+    });
+
+    await h.start('student');
+    h.context.switchView('directoryView');
+    await tick();
+
+    assert.equal(calls, 0);
+    assert.equal(h.$('recentSearches').classList.contains('hidden'), true);
+});
+
+test('search history panel stays hidden when the account has no saved searches', async () => {
+    const h = harness({ hasSession: () => true, getSearchHistory: async () => [] });
+
+    await h.start('student');
+    h.context.switchView('directoryView');
+    await tick();
+
+    assert.equal(h.$('recentSearches').classList.contains('hidden'), true);
 });

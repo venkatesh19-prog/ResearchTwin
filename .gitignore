@@ -33,3 +33,4 @@ backend/models/researchtwin_logistic_compat_test.joblib
 # 87 MB ONNX embedding graph is fetched at build time by
 # backend/scripts/fetch_embedding_model.py (SHA-256 verified), not committed.
 backend/models/all-MiniLM-L6-v2-onnx/
+.neon

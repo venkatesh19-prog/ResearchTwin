@@ -15,12 +15,20 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
 
-if engine.dialect.name == "sqlite":
-    @event.listens_for(engine, "connect")
-    def enable_foreign_keys(connection, _record):
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+
+def _enable_sqlite_foreign_keys(dbapi_connection, _record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
+def enforce_sqlite_foreign_keys(bind) -> None:
+    """Enable foreign-key enforcement for every connection from ``bind``."""
+    if bind.dialect.name == "sqlite":
+        event.listen(bind, "connect", _enable_sqlite_foreign_keys)
+
+
+enforce_sqlite_foreign_keys(engine)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

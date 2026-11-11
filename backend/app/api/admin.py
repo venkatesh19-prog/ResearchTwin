@@ -35,10 +35,27 @@ from ..schemas import (
 )
 from ..services.audit import record_event
 from ..services.auth import hash_password
-from ..services.groups import group_name_for_role
+from ..services.groups import (
+    ROLE_GROUP_NAMES,
+    assign_role_group,
+    group_name_for_role,
+)
 from .deps import require_admin
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
+
+
+def _sync_role_group(db: Session, account: User) -> None:
+    """Keep the account in exactly the cohort group matching its role."""
+    role_group_ids = db.query(Group.id).filter(
+        Group.name.in_(set(ROLE_GROUP_NAMES.values()))
+    )
+    db.query(GroupMembership).filter(
+        GroupMembership.user_id == account.id,
+        GroupMembership.group_id.in_(role_group_ids.scalar_subquery()),
+    ).delete(synchronize_session=False)
+    if group_name_for_role(account.role) is not None:
+        assign_role_group(db, account)
 
 
 def _get_account(db: Session, user_id: int) -> User:
@@ -140,6 +157,7 @@ def set_account_role(
 
     previous_role = account.role
     account.role = payload.role
+    _sync_role_group(db, account)
     revoked = _revoke_sessions(db, account.id)
     record_event(
         db,

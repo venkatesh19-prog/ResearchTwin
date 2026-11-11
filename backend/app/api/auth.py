@@ -60,6 +60,18 @@ def _login_failure_already_recorded(
     return query.first() is not None
 
 
+def _enforce_login_failure_limit(db: Session, request, email: str) -> None:
+    """Throttle failed logins only, so a correct password is never locked out."""
+    enforce_rate_limit(
+        db,
+        request,
+        scope="auth-login",
+        identities=(("email", email),),
+        limit=LOGIN_MAX,
+        window_seconds=LOGIN_WINDOW_SECONDS,
+    )
+
+
 def _record_login_failure(
     db: Session, *, user: User | None, reason: str
 ) -> None:
@@ -143,6 +155,7 @@ def register(
     try:
         db.flush()
         assign_role_group(db, user)
+        token, expires_at = create_session(db, user, commit=False)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -158,8 +171,6 @@ def register(
         )
 
     db.refresh(user)
-    token, expires_at = create_session(db, user)
-
     return _auth_response(token, expires_at, user)
 
 
@@ -170,14 +181,6 @@ def login(
     db: Session = Depends(get_db),
 ):
     email = normalize_email(payload.email)
-    enforce_rate_limit(
-        db,
-        request,
-        scope="auth-login",
-        identities=(("email", email),),
-        limit=LOGIN_MAX,
-        window_seconds=LOGIN_WINDOW_SECONDS,
-    )
 
     user = (
         db.query(User)
@@ -187,6 +190,7 @@ def login(
 
     if user is None:
         verify_password(payload.password, _dummy_password_hash())
+        _enforce_login_failure_limit(db, request, email)
         _record_login_failure(db, user=None, reason="unknown_account")
         raise HTTPException(
             status_code=401,
@@ -195,6 +199,7 @@ def login(
         )
 
     if not verify_password(payload.password, user.password_hash):
+        _enforce_login_failure_limit(db, request, email)
         _record_login_failure(db, user=user, reason="invalid_password")
         raise HTTPException(
             status_code=401,

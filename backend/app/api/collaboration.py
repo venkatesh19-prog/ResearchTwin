@@ -1,7 +1,7 @@
 import time
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import (
     CollaborationRequest,
+    CollaborationWorkspace,
     FacultyResearcherLink,
     Researcher,
     StudentProfile,
@@ -25,6 +26,7 @@ from ..services.rate_limit import (
     RECOMMENDATION_WINDOW_SECONDS,
     enforce_rate_limit,
 )
+from ..services.workspaces import create_for_accepted_request
 from .deps import require_admin, require_faculty, require_student
 
 router = APIRouter(tags=["Collaboration"])
@@ -43,7 +45,11 @@ def _researcher_brief(researcher: Researcher | None) -> dict:
     }
 
 
-def _request_payload(record: CollaborationRequest, researcher: Researcher | None) -> dict:
+def _request_payload(
+    record: CollaborationRequest,
+    researcher: Researcher | None,
+    workspace_id: int | None = None,
+) -> dict:
     return {
         "id": record.id,
         "researcher_id": record.researcher_id,
@@ -51,9 +57,21 @@ def _request_payload(record: CollaborationRequest, researcher: Researcher | None
         "message": record.message,
         "status": record.status,
         "faculty_response": record.faculty_response,
+        "workspace_id": workspace_id,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
         "reviewed_at": record.reviewed_at,
+    }
+
+
+def _workspace_ids(db: Session, request_ids: set[int]) -> dict[int, int]:
+    if not request_ids:
+        return {}
+    return {
+        row.collaboration_request_id: row.id
+        for row in db.query(CollaborationWorkspace)
+        .filter(CollaborationWorkspace.collaboration_request_id.in_(request_ids))
+        .all()
     }
 
 
@@ -137,7 +155,14 @@ def create_my_collaboration_request(
     )
 
     db.add(record)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="You already have a pending request with this researcher",
+        )
     db.refresh(record)
 
     return _request_payload(record, researcher)
@@ -145,13 +170,19 @@ def create_my_collaboration_request(
 
 @router.get("/students/me/collaboration-requests")
 def list_my_collaboration_requests(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     user: User = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    query = db.query(CollaborationRequest).filter(
+        CollaborationRequest.student_user_id == user.id
+    )
+    total = query.order_by(None).count()
     records = (
-        db.query(CollaborationRequest)
-        .filter(CollaborationRequest.student_user_id == user.id)
-        .order_by(CollaborationRequest.created_at.desc())
+        query.order_by(CollaborationRequest.created_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 
@@ -161,12 +192,22 @@ def list_my_collaboration_requests(
             Researcher.id.in_({record.researcher_id for record in records})
         ).all()
     } if records else {}
+    workspace_ids = _workspace_ids(
+        db, {record.id for record in records}
+    )
 
     return {
         "requests": [
-            _request_payload(record, researchers.get(record.researcher_id))
+            _request_payload(
+                record,
+                researchers.get(record.researcher_id),
+                workspace_ids.get(record.id),
+            )
             for record in records
-        ]
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
     }
 
 
@@ -311,6 +352,8 @@ def get_my_researcher_link(
 @router.get("/faculty/me/collaboration-requests")
 def list_faculty_collaboration_requests(
     status: Literal["pending", "accepted", "rejected"] | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     user: User = Depends(require_faculty),
     db: Session = Depends(get_db),
 ):
@@ -326,7 +369,13 @@ def list_faculty_collaboration_requests(
     if status:
         query = query.filter(CollaborationRequest.status == status)
 
-    records = query.order_by(CollaborationRequest.created_at.desc()).all()
+    total = query.order_by(None).count()
+    records = (
+        query.order_by(CollaborationRequest.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     students = {
         student.id: student
@@ -343,19 +392,27 @@ def list_faculty_collaboration_requests(
     } if records else {}
 
     researcher = db.get(Researcher, link.researcher_id)
+    workspace_ids = _workspace_ids(
+        db, {record.id for record in records}
+    )
 
     return {
         "researcher": _researcher_brief(researcher),
         "requests": [
             {
-                **_request_payload(record, researcher),
+                **_request_payload(
+                    record, researcher, workspace_ids.get(record.id)
+                ),
                 "student": _student_brief(
                     students.get(record.student_user_id),
                     profiles.get(record.student_user_id),
                 ),
             }
             for record in records
-        ]
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
     }
 
 
@@ -402,6 +459,25 @@ def decide_collaboration_request(
         db.rollback()
         raise HTTPException(status_code=409, detail="This request has already been reviewed")
 
+    researcher = db.get(Researcher, record.researcher_id)
+    workspace_id = None
+
+    if payload.decision == "accept":
+        try:
+            workspace = create_for_accepted_request(
+                db,
+                request=record,
+                researcher=researcher,
+                faculty_user_id=user.id,
+            )
+        except IntegrityError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="This request has already been reviewed",
+            ) from exc
+        workspace_id = workspace.id
+
     record_event(
         db,
         actor=user,
@@ -411,11 +487,10 @@ def decide_collaboration_request(
         detail={
             "decision": payload.decision,
             "researcher_id": link.researcher_id,
+            "workspace_id": workspace_id,
         },
     )
     db.commit()
     db.refresh(record)
 
-    researcher = db.get(Researcher, record.researcher_id)
-
-    return _request_payload(record, researcher)
+    return _request_payload(record, researcher, workspace_id)

@@ -174,6 +174,113 @@ def test_student_and_researchers_are_encoded_in_a_single_batch(monkeypatch):
     assert "Machine Learning" in model.calls[0][0]
 
 
+class TextVectorModel:
+    """Deterministic encoder keyed by the exact text it receives."""
+
+    def __init__(self, vectors):
+        self.vectors = vectors
+        self.calls = []
+
+    def encode(self, texts, normalize_embeddings=True):
+        self.calls.append(list(texts))
+        return np.asarray(
+            [self.vectors[text] for text in texts], dtype=np.float64
+        )
+
+
+def distinct_researchers():
+    return [
+        make_researcher(
+            1,
+            research_areas="Machine Learning",
+            expertise="Ranking",
+            skills="Python",
+            projects="Search",
+            publications="IR",
+        ),
+        make_researcher(
+            2,
+            research_areas="Computer Vision",
+            expertise="Segmentation",
+            skills="PyTorch",
+            projects="Vision",
+            publications="CNN",
+        ),
+        make_researcher(
+            3,
+            research_areas="Cyber Security",
+            expertise="Intrusion Detection",
+            skills="Go",
+            projects="SIEM",
+            publications="IDS",
+        ),
+    ]
+
+
+def text_vectors(researchers):
+    student_text = semantic_matching.build_student_text(STUDENT)
+    units = ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])
+    vectors = {student_text: units[0]}
+
+    for index, researcher in enumerate(researchers):
+        vectors[semantic_matching.build_researcher_text(researcher)] = units[index]
+
+    return vectors
+
+
+def test_researcher_embeddings_are_reused_across_identical_calls(monkeypatch):
+    researchers = distinct_researchers()
+    model = TextVectorModel(text_vectors(researchers))
+    patch_model(monkeypatch, model)
+
+    first = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+    second = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+
+    assert [len(call) for call in model.calls] == [4, 1]
+    assert model.calls[1] == [semantic_matching.build_student_text(STUDENT)]
+    assert second == first
+
+
+def test_researcher_embedding_cache_evicts_least_recently_used(monkeypatch):
+    monkeypatch.setattr(semantic_matching, "RESEARCHER_EMBEDDING_CACHE_SIZE", 2)
+
+    researchers = distinct_researchers()
+    texts = [semantic_matching.build_researcher_text(r) for r in researchers]
+    model = TextVectorModel(text_vectors(researchers))
+    patch_model(monkeypatch, model)
+
+    first = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+    second = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+    third = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+
+    assert [len(call) for call in model.calls] == [4, 2, 2]
+    assert texts[0] in model.calls[1]
+    assert texts[1] in model.calls[2]
+    assert second == first
+    assert third == first
+
+
+def test_switching_embedding_models_invalidates_cached_researcher_vectors(
+    monkeypatch,
+):
+    researchers = distinct_researchers()
+    vectors = text_vectors(researchers)
+    first_model = TextVectorModel(vectors)
+    second_model = TextVectorModel(vectors)
+
+    patch_model(monkeypatch, first_model)
+    first = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+    repeated = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+
+    patch_model(monkeypatch, second_model)
+    second = semantic_matching.calculate_semantic_similarity(STUDENT, researchers)
+
+    assert [len(call) for call in first_model.calls] == [4, 1]
+    assert [len(call) for call in second_model.calls] == [4]
+    assert repeated == first
+    assert second == first
+
+
 def test_model_failure_becomes_a_controlled_semantic_error(monkeypatch):
     error_cls = getattr(semantic_matching, "SemanticMatchingError", None)
     assert error_cls is not None, (

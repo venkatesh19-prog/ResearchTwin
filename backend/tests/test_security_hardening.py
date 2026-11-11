@@ -200,15 +200,25 @@ def test_registration_rate_limit_returns_retry_after(client, monkeypatch):
     assert "password" not in second.text.lower()
 
 
-def test_login_rate_limit_returns_retry_after(client, monkeypatch):
+def test_login_failure_rate_limit_returns_retry_after(client, monkeypatch):
     _, user = _register(client)
     monkeypatch.setattr("app.api.auth.LOGIN_MAX", 1)
-    payload = {"email": user["email"], "password": "TestPassword123!"}
+    wrong = {"email": user["email"], "password": "WrongPassword123!"}
 
-    assert client.post("/auth/login", json=payload).status_code == 200
-    limited = client.post("/auth/login", json=payload)
+    assert client.post("/auth/login", json=wrong).status_code == 401
+    limited = client.post("/auth/login", json=wrong)
     assert limited.status_code == 429
     assert int(limited.headers["retry-after"]) > 0
+
+
+def test_successful_login_is_not_blocked_by_failure_limit(client, monkeypatch):
+    _, user = _register(client)
+    monkeypatch.setattr("app.api.auth.LOGIN_MAX", 1)
+    wrong = {"email": user["email"], "password": "WrongPassword123!"}
+    right = {"email": user["email"], "password": "TestPassword123!"}
+
+    assert client.post("/auth/login", json=wrong).status_code == 401
+    assert client.post("/auth/login", json=right).status_code == 200
 
 
 def test_recommendation_rate_limit_returns_retry_after(

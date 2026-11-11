@@ -1,6 +1,7 @@
 import hashlib
 import os
 import threading
+from collections import OrderedDict
 
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -21,6 +22,13 @@ TOKENIZER_PATH = os.path.join(MODEL_DIR, "tokenizer.json")
 MAX_SEQUENCE_LENGTH = 256
 EMBED_BATCH_SIZE = 8
 ONNX_INTRA_OP_THREADS = 1
+# Researcher vectors are reused across requests; 2048 x 384 float32 rows is
+# roughly 3 MB. Entries are scoped to the embedder that produced them.
+RESEARCHER_EMBEDDING_CACHE_SIZE = 2048
+
+_researcher_embedding_cache = OrderedDict()
+_researcher_embedding_cache_owner = None
+_researcher_embedding_cache_lock = threading.Lock()
 
 # Pinned by scripts/fetch_embedding_model.py from the recorded Hugging Face
 # revision. Readiness re-hashes the installed files against these values.
@@ -257,6 +265,99 @@ def _unavailable(researcher) -> dict:
     }
 
 
+def reset_researcher_embedding_cache():
+    global _researcher_embedding_cache_owner
+
+    with _researcher_embedding_cache_lock:
+        _researcher_embedding_cache.clear()
+        _researcher_embedding_cache_owner = None
+
+
+def _checked_embeddings(encoded, expected_rows):
+    encoded = np.asarray(encoded)
+
+    if encoded.ndim != 2 or len(encoded) != expected_rows:
+        raise SemanticMatchingError(
+            "Semantic similarity computation returned an unexpected "
+            "number of vectors."
+        )
+
+    return encoded
+
+
+def _encode_student_and_researchers(model, student_text, researcher_entries):
+    """Encode the student plus only the researchers missing from cache.
+
+    ``researcher_entries`` pairs one cache key per researcher with its profile
+    text. The first call still sends the student and every researcher in one
+    batch, and duplicate texts keep one row per researcher. The student is
+    re-encoded every call so a changed profile never reuses a stale vector.
+    """
+    global _researcher_embedding_cache_owner
+
+    texts = [text for _, text in researcher_entries]
+    limit = max(int(RESEARCHER_EMBEDDING_CACHE_SIZE), 0)
+
+    with _researcher_embedding_cache_lock:
+        if _researcher_embedding_cache_owner is not model:
+            _researcher_embedding_cache.clear()
+            _researcher_embedding_cache_owner = model
+
+        if limit == 0:
+            encoded = _checked_embeddings(
+                model.encode(
+                    [student_text] + texts,
+                    normalize_embeddings=True,
+                ),
+                1 + len(texts),
+            )
+            return encoded[0:1], encoded[1:]
+
+        cached = {}
+        missing = []
+
+        for entry in researcher_entries:
+            key = entry[0]
+            if key not in _researcher_embedding_cache:
+                missing.append(entry)
+            elif key not in cached:
+                _researcher_embedding_cache.move_to_end(key)
+                cached[key] = _researcher_embedding_cache[key]
+
+        if missing:
+            encoded = _checked_embeddings(
+                model.encode(
+                    [student_text] + [text for _, text in missing],
+                    normalize_embeddings=True,
+                ),
+                1 + len(missing),
+            )
+            student_embedding = encoded[0:1]
+            fresh = []
+
+            for (key, _), row in zip(missing, encoded[1:]):
+                # Copy rows so cached entries cannot retain the whole encoded
+                # batch through a base-array view.
+                value = np.array(row, copy=True)
+                _researcher_embedding_cache[key] = value
+                fresh.append((key, value))
+            while len(_researcher_embedding_cache) > limit:
+                _researcher_embedding_cache.popitem(last=False)
+
+            for key, value in fresh:
+                cached[key] = value
+        else:
+            encoded = _checked_embeddings(
+                model.encode([student_text], normalize_embeddings=True),
+                1,
+            )
+            student_embedding = encoded[0:1]
+
+    return student_embedding, [
+        cached[key] for key, _ in researcher_entries
+    ]
+
+
 def calculate_semantic_similarity(student_profile: dict, researchers):
     """Score every researcher against the student profile.
 
@@ -296,9 +397,15 @@ def calculate_semantic_similarity(student_profile: dict, researchers):
         return [_unavailable(researcher) for researcher in researchers]
 
     try:
-        embeddings = get_model().encode(
-            [student_text] + [text for _, text in encodable],
-            normalize_embeddings=True,
+        student_embedding, researcher_embeddings = (
+            _encode_student_and_researchers(
+                get_model(),
+                student_text,
+                [
+                    (researchers[index].id, text)
+                    for index, text in encodable
+                ],
+            )
         )
     except SemanticMatchingError:
         raise
@@ -308,8 +415,8 @@ def calculate_semantic_similarity(student_profile: dict, researchers):
         ) from exc
 
     similarities = cosine_similarity(
-        embeddings[0:1],
-        embeddings[1:],
+        student_embedding,
+        np.vstack(researcher_embeddings),
     )[0]
 
     scores_by_index = {

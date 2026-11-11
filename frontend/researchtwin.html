@@ -530,12 +530,18 @@
 
             .nav-menu {
                 display: flex;
+                flex-wrap: wrap;
                 width: 100%;
                 margin-top: 0;
             }
 
             .nav-menu li {
-                flex: 1;
+                flex: 0 1 auto;
+            }
+
+            .nav-menu .nav-heading {
+                flex-basis: 100%;
+                padding: 8px 4px 2px;
             }
 
             .nav-menu li a {
@@ -593,9 +599,270 @@
                 flex-wrap: wrap;
             }
         }
+
+        /* ResearchTwin 2.0 shared view primitives */
+        .nav-heading {
+            padding: 12px 16px 4px;
+            font-size: 10px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            list-style: none;
+        }
+
+        .rt-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .rt-toolbar input,
+        .rt-toolbar select {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: #FFF;
+            font-size: 13px;
+            min-width: 120px;
+        }
+
+        .rt-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rt-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .rt-item h4 {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .rt-meta {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .rt-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #2A2E3D;
+            color: #FFF;
+            white-space: nowrap;
+        }
+
+        .rt-badge-open,
+        .rt-badge-verified,
+        .rt-badge-completed,
+        .rt-badge-accepted,
+        .rt-badge-active,
+        .rt-badge-done,
+        .rt-badge-published,
+        .rt-badge-defended {
+            background: rgba(40, 167, 69, .18);
+            color: #4ADE80;
+        }
+
+        .rt-badge-pending,
+        .rt-badge-proposed,
+        .rt-badge-under_review,
+        .rt-badge-submitted,
+        .rt-badge-in_progress,
+        .rt-badge-reading,
+        .rt-badge-revision_requested,
+        .rt-badge-to_read {
+            background: rgba(217, 101, 0, .18);
+            color: #FFB067;
+        }
+
+        .rt-badge-rejected,
+        .rt-badge-withdrawn,
+        .rt-badge-expired,
+        .rt-badge-closed,
+        .rt-badge-unverified {
+            background: rgba(255, 77, 77, .16);
+            color: #FF8A8A;
+        }
+
+        .rt-status {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin: 8px 0;
+            min-height: 18px;
+        }
+
+        .rt-status.error {
+            color: #FF6B6B;
+        }
+
+        .rt-status.success {
+            color: #4ADE80;
+        }
+
+        .rt-form {
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .rt-form label {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .rt-form input,
+        .rt-form select,
+        .rt-form textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: #FFF;
+            font-size: 13px;
+        }
+
+        .rt-form textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+
+        .rt-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .rt-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            align-items: center;
+        }
+
+        .rt-table-wrap {
+            overflow-x: auto;
+        }
+
+        .rt-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .rt-table th,
+        .rt-table td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .rt-table th {
+            color: var(--text-sub);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .rt-detail {
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 14px;
+            background: rgba(217, 101, 0, .05);
+        }
+
+        .rt-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .rt-chip {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(0, 120, 212, .15);
+            color: #7CC4FF;
+            border: 1px solid rgba(0, 120, 212, .3);
+        }
+
+        .rt-empty {
+            color: var(--text-sub);
+            font-size: 13px;
+            padding: 10px 0;
+        }
+
+        .rt-note {
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.5;
+            margin: 6px 0;
+        }
+
+        .rt-svg {
+            width: 100%;
+            height: auto;
+            background: #0B0D12;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .rt-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 12px 0;
+        }
+
+        .rt-kpi {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .rt-kpi b {
+            display: block;
+            font-size: 22px;
+            color: #FFF;
+        }
+
+        .rt-kpi span {
+            font-size: 11px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        @media (max-width: 720px) {
+            .rt-grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 <script src="frontend-config.js"></script>
 <script src="api-client.js"></script>
+<script src="research-2.0.js"></script>
 </head>
 <body>
 
@@ -819,7 +1086,11 @@
         <div id="directoryView" class="view-section">
             <div class="card">
                 <div class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Researcher Directory &amp; Search</div>
-                <input type="text" id="facSearch" placeholder="Search by name, department, research area, or skill..." oninput="onDirectorySearch()">
+                <input type="text" id="facSearch" placeholder="Search by name, department, research area, or skill..." oninput="onDirectorySearch()" onchange="recordDirectorySearch()">
+                <div id="recentSearches" class="hidden" style="margin-top:12px;">
+                    <div style="color:var(--text-sub);font-size:12px;font-weight:600;margin-bottom:6px;">Recent searches</div>
+                    <div id="recentSearchList" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                </div>
                 <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
                     <div style="flex:1;min-width:200px;">
                         <label for="facDepartment" style="color:var(--text-sub);font-size:13px;display:block;margin-bottom:4px;">Department</label>
@@ -992,6 +1263,9 @@ const RECOMMENDATION_FIELDS = [
 ];
 
 const DIRECTORY_TTL_MS = 60000;
+const DIRECTORY_LIMIT = 500;
+const LIST_PAGE_SIZE = 50;
+const ADMIN_LIST_LIMIT = 200;
 
 const state = {
     user: null,
@@ -1005,10 +1279,17 @@ const state = {
     directoryLoadedAt: 0,
     directoryFlight: null,
     directorySeq: 0,
+    searchHistory: null,
     matchFlight: null,
     matchRequestSeq: 0,
     refreshRecommendationsNeeded: false,
+    requestsSeq: 0,
+    requests: null,
+    requestsTotal: 0,
+    inboxSeq: 0,
     inboxFlight: null,
+    inboxRequests: null,
+    inboxRequestsTotal: 0,
     decisionBusy: false,
     adminUsers: null,
     adminUsersSeq: 0,
@@ -1022,6 +1303,7 @@ const state = {
     adminGroupMembers: {},
     adminBusy: false,
     adminExports: {},
+    adminExportsInFlight: new Set(),
     authTransition: null,
     epoch: 0
 };
@@ -1078,6 +1360,33 @@ function finishAuthTransition(transition) {
     ["loginBtn", "registerBtn", "logoutBtn", "tabLogin", "tabRegister"].forEach(id => setBusy(id, false));
 }
 
+function requireArray(value, message) {
+    if (!Array.isArray(value)) throw new Error(message);
+    return value;
+}
+
+function listTotal(payload, fallback) {
+    const numeric = Number(payload && payload.total);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : fallback;
+}
+
+function renderListWithMore(list, items, total, renderItem, onMore) {
+    list.innerHTML = "";
+    items.forEach(item => list.appendChild(renderItem(item)));
+    if (items.length >= total) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-secondary btn-small";
+    button.style.marginTop = "10px";
+    button.textContent = "Load more";
+    button.addEventListener("click", () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        onMore();
+    });
+    list.appendChild(button);
+}
+
 function humanizeError(error) {
     if (!error) return "Unexpected error.";
     if (error.kind === "network") {
@@ -1120,7 +1429,13 @@ function resetAppState() {
     state.directorySeq += 1;
     state.matchFlight = null;
     state.refreshRecommendationsNeeded = false;
+    state.requestsSeq += 1;
+    state.requests = null;
+    state.requestsTotal = 0;
+    state.inboxSeq += 1;
     state.inboxFlight = null;
+    state.inboxRequests = null;
+    state.inboxRequestsTotal = 0;
     state.decisionBusy = false;
     state.adminUsers = null;
     state.adminUsersSeq += 1;
@@ -1134,6 +1449,7 @@ function resetAppState() {
     state.adminGroupMembers = {};
     state.adminBusy = false;
     state.adminExports = {};
+    state.adminExportsInFlight = new Set();
     setProfileBusy("student", true);
     setProfileBusy("faculty", true);
     ["refreshMatchesBtn", "refreshInboxBtn", "retryStudentBtn", "retryFacultyBtn", "retryDirectoryBtn", "refreshAdminUsersBtn", "refreshAuditBtn", "refreshAdminGroupsBtn"].forEach(id => setBusy(id, false));
@@ -1175,6 +1491,11 @@ function resetAppState() {
     if (list) list.innerHTML = "";
     const search = $("facSearch");
     if (search) search.value = "";
+    state.searchHistory = null;
+    const recentSearches = $("recentSearches");
+    if (recentSearches) recentSearches.classList.add("hidden");
+    const recentSearchList = $("recentSearchList");
+    if (recentSearchList) recentSearchList.innerHTML = "";
 
     ["requestsList", "inboxList", "linkPanel"].forEach((id) => {
         const element = $(id);
@@ -1241,13 +1562,20 @@ function buildNav(role) {
             ["requestsView", "fa-paper-plane", "My Requests"]
         ];
 
+    if (window.RT20) items.push(...RT20.navItems(role));
+
     $("navMenu").innerHTML = items.map(([viewId, icon, label]) =>
-        `<li><a href="#" data-view="${viewId}" onclick="switchView('${viewId}'); return false;">` +
-        `<i class="fa-solid ${icon}"></i> ${label}</a></li>`
+        viewId === null
+            ? `<li class="nav-heading">${escapeHTML(label)}</li>`
+            : `<li><a href="#" data-view="${viewId}" onclick="switchView('${viewId}'); return false;">` +
+              `<i class="fa-solid ${icon}"></i> ${label}</a></li>`
     ).join("");
 }
 
 function switchView(viewId) {
+    // ResearchTwin 2.0 views mount their sections on first use, so the hook
+    // must run before the missing-element guard below.
+    if (window.RT20) RT20.switchView(viewId);
     const view = $(viewId);
     if (!view) return;
 
@@ -1262,7 +1590,10 @@ function switchView(viewId) {
 
     if (viewId === "studentView") loadStudentProfile();
     if (viewId === "facultyProfileView") loadProfile("faculty");
-    if (viewId === "directoryView") loadDirectory();
+    if (viewId === "directoryView") {
+        loadDirectory();
+        loadSearchHistory();
+    }
     if (viewId === "requestsView") loadMyRequests();
     if (viewId === "inboxView") loadFacultyInbox();
     if (viewId === "adminUsersView") loadAdminUsers();
@@ -1277,6 +1608,7 @@ function enterApp(user) {
 
     resetAppState();
     state.user = user;
+    if (window.RT20) RT20.reset();
 
     $("authShell").classList.add("hidden");
     $("appSidebar").classList.remove("hidden");
@@ -1307,6 +1639,7 @@ function enterApp(user) {
 
 function handleUnauthorized(detail) {
     resetAppState();
+    ["loginBtn", "registerBtn"].forEach(id => setBusy(id, false));
     const reason = detail && detail !== "Not authenticated"
         ? `Your session has ended (${detail}). Sign in again.`
         : "Your session has ended. Sign in again.";
@@ -1601,10 +1934,14 @@ async function refreshRecommendations({ quiet = false, invalidate = false } = {}
             const data = await api.getRecommendations(topK);
             if (seq !== state.matchRequestSeq || epoch !== state.epoch) return;
 
-            renderMatches(Array.isArray(data.recommendations) ? data.recommendations : []);
+            const recommendations = requireArray(
+                data && data.recommendations,
+                "The API returned an unexpected recommendations response."
+            );
+            renderMatches(recommendations);
             renderCompletion("matchCompletion", "matchCompletionFill", data.profile_completion);
 
-            const count = Array.isArray(data.recommendations) ? data.recommendations.length : 0;
+            const count = recommendations.length;
             setStatus(
                 "matchStatus",
                 count ? `Showing ${count} researcher matches.` : "No researcher matches were returned.",
@@ -1873,12 +2210,22 @@ function renderDirectory() {
         return;
     }
 
-    setStatus(
-        "directoryStatus",
-        (query || deptFilter || skillFilter)
-            ? `Showing ${filtered.length} of ${directory.length} researchers.`
-            : `Showing all ${directory.length} researchers.`
-    );
+    const capped = directory.length >= DIRECTORY_LIMIT;
+    const suffix = capped ? " The directory may contain more records." : "";
+
+    if (query || deptFilter || skillFilter) {
+        setStatus(
+            "directoryStatus",
+            `Showing ${filtered.length} of ${capped ? `the first ${directory.length}` : directory.length} researchers.${suffix}`
+        );
+    } else if (capped) {
+        setStatus(
+            "directoryStatus",
+            `Showing the first ${directory.length} researchers.${suffix}`
+        );
+    } else {
+        setStatus("directoryStatus", `Showing all ${directory.length} researchers.`);
+    }
 
     filtered.forEach(person => {
         const item = document.createElement("div");
@@ -1933,7 +2280,7 @@ async function loadDirectory({ force = false } = {}) {
     const flight = {};
     state.directoryFlight = flight;
 
-    const promise = api.getResearchers().then(researchers => {
+    const promise = api.getResearchers({ limit: DIRECTORY_LIMIT }).then(researchers => {
         if (epoch !== state.epoch || seq !== state.directorySeq) return;
         if (!Array.isArray(researchers)) {
             throw new Error("The API returned an unexpected directory response.");
@@ -1965,6 +2312,69 @@ function onDirectorySearch() {
         return;
     }
     renderDirectory();
+}
+
+async function loadSearchHistory() {
+    const panel = $("recentSearches");
+    if (!panel) return;
+
+    if (!api.hasSession()) {
+        state.searchHistory = null;
+        panel.classList.add("hidden");
+        return;
+    }
+
+    try {
+        const entries = await api.getSearchHistory(10);
+        state.searchHistory = Array.isArray(entries) ? entries : [];
+    } catch {
+        state.searchHistory = null;
+    }
+    renderSearchHistory();
+}
+
+function renderSearchHistory() {
+    const panel = $("recentSearches");
+    const list = $("recentSearchList");
+    if (!panel || !list) return;
+
+    const entries = Array.isArray(state.searchHistory) ? state.searchHistory : [];
+    list.innerHTML = "";
+    if (!entries.length) {
+        panel.classList.add("hidden");
+        return;
+    }
+
+    entries.forEach(entry => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-secondary";
+        button.style.cssText = "font-size:12px;padding:4px 10px;";
+        button.textContent = entry.query;
+        button.addEventListener("click", () => {
+            $("facSearch").value = entry.query;
+            renderDirectory();
+        });
+        list.appendChild(button);
+    });
+    panel.classList.remove("hidden");
+}
+
+function recordDirectorySearch() {
+    const query = ($("facSearch")?.value || "").trim();
+    if (query.length < 2 || !api.hasSession()) return;
+
+    const history = Array.isArray(state.searchHistory) ? state.searchHistory : [];
+    const latest = history[0];
+    if (latest && String(latest.query).toLowerCase() === query.toLowerCase()) return;
+
+    api.recordSearch(query).then(entry => {
+        state.searchHistory = [
+            entry,
+            ...history.filter(item => String(item.query).toLowerCase() !== query.toLowerCase())
+        ].slice(0, 10);
+        renderSearchHistory();
+    }).catch(() => {});
 }
 
 const PRIORITY_CLASS = { high: "priority-high", medium: "priority-medium", low: "priority-low" };
@@ -2287,20 +2697,27 @@ function requestItemHTML(record) {
     return wrapper;
 }
 
-async function loadMyRequests() {
+async function loadMyRequests({ append = false } = {}) {
     const list = $("requestsList");
-    setStatus("requestsStatus", "Loading your requests…");
+    const offset = append && state.requests ? state.requests.length : 0;
+    setStatus("requestsStatus", append ? "Loading more requests…" : "Loading your requests…");
 
     const epoch = state.epoch;
+    const seq = ++state.requestsSeq;
 
     try {
-        const data = await api.listMyCollaborationRequests();
-        if (epoch !== state.epoch) return;
+        const data = await api.listMyCollaborationRequests({ offset, limit: LIST_PAGE_SIZE });
+        if (epoch !== state.epoch || seq !== state.requestsSeq) return;
 
-        const records = Array.isArray(data.requests) ? data.requests : [];
+        const records = requireArray(
+            data && data.requests,
+            "The API returned an unexpected collaboration requests response."
+        );
+        state.requests = append ? [...(state.requests || []), ...records] : records;
+        state.requestsTotal = listTotal(data, records.length);
         list.innerHTML = "";
 
-        if (!records.length) {
+        if (!state.requests.length) {
             list.innerHTML = `
                 <p style="color:var(--text-sub);margin-top:12px">
                     You have not sent any collaboration requests yet. Open ML Recommendations
@@ -2310,11 +2727,31 @@ async function loadMyRequests() {
             return;
         }
 
-        records.forEach(record => list.appendChild(requestItemHTML(record)));
-        setStatus("requestsStatus", `${records.length} request(s).`, "success");
+        renderListWithMore(
+            list,
+            state.requests,
+            state.requestsTotal,
+            requestItemHTML,
+            () => loadMyRequests({ append: true })
+        );
+        setStatus(
+            "requestsStatus",
+            `Showing ${state.requests.length} of ${state.requestsTotal} request(s).`,
+            "success"
+        );
     } catch (error) {
-        if (epoch !== state.epoch) return;
-        list.innerHTML = "";
+        if (epoch !== state.epoch || seq !== state.requestsSeq) return;
+        if (append && state.requests) {
+            renderListWithMore(
+                list,
+                state.requests,
+                state.requestsTotal,
+                requestItemHTML,
+                () => loadMyRequests({ append: true })
+            );
+        } else if (!append) {
+            list.innerHTML = "";
+        }
         if (error.kind === "unauthorized") return;
         setStatus(
             "requestsStatus",
@@ -2439,19 +2876,23 @@ function decisionButtonsDisabled(disabled) {
     });
 }
 
-async function loadFacultyInbox() {
+async function loadFacultyInbox({ append = false } = {}) {
     const list = $("inboxList");
     const panel = $("linkPanel");
-    setStatus("inboxStatus", "Loading your requests…");
+    const offset = append && state.inboxRequests ? state.inboxRequests.length : 0;
+    setStatus("inboxStatus", append ? "Loading more requests…" : "Loading your requests…");
 
     const epoch = state.epoch;
+    const seq = ++state.inboxSeq;
 
     try {
         const link = await api.getFacultyResearcherLink();
-        if (epoch !== state.epoch) return;
+        if (epoch !== state.epoch || seq !== state.inboxSeq) return;
 
         if (!link || !link.linked) {
             const userId = state.user?.id || "unknown";
+            state.inboxRequests = null;
+            state.inboxRequestsTotal = 0;
             panel.innerHTML = linkPanelHTML(
                 `Your account (ID: ${userId}) is not linked to a researcher directory record yet. ` +
                 "An administrator must verify your identity and link your account before student " +
@@ -2468,13 +2909,23 @@ async function loadFacultyInbox() {
         );
         renderLinkedRecord(link.researcher);
 
-        const data = await api.listFacultyCollaborationRequests();
-        if (epoch !== state.epoch) return;
+        const data = await api.listFacultyCollaborationRequests(undefined, {
+            offset,
+            limit: LIST_PAGE_SIZE
+        });
+        if (epoch !== state.epoch || seq !== state.inboxSeq) return;
 
-        const records = Array.isArray(data.requests) ? data.requests : [];
+        const records = requireArray(
+            data && data.requests,
+            "The API returned an unexpected collaboration requests response."
+        );
+        state.inboxRequests = append
+            ? [...(state.inboxRequests || []), ...records]
+            : records;
+        state.inboxRequestsTotal = listTotal(data, records.length);
         list.innerHTML = "";
 
-        if (!records.length) {
+        if (!state.inboxRequests.length) {
             list.innerHTML = `
                 <p style="color:var(--text-sub);margin-top:12px">
                     No student requests have been received for this record yet.
@@ -2483,11 +2934,31 @@ async function loadFacultyInbox() {
             return;
         }
 
-        records.forEach(record => list.appendChild(renderInboxRecord(record)));
-        setStatus("inboxStatus", `${records.length} request(s).`, "success");
+        renderListWithMore(
+            list,
+            state.inboxRequests,
+            state.inboxRequestsTotal,
+            renderInboxRecord,
+            () => loadFacultyInbox({ append: true })
+        );
+        setStatus(
+            "inboxStatus",
+            `Showing ${state.inboxRequests.length} of ${state.inboxRequestsTotal} request(s).`,
+            "success"
+        );
     } catch (error) {
-        if (epoch !== state.epoch) return;
-        list.innerHTML = "";
+        if (epoch !== state.epoch || seq !== state.inboxSeq) return;
+        if (append && state.inboxRequests) {
+            renderListWithMore(
+                list,
+                state.inboxRequests,
+                state.inboxRequestsTotal,
+                renderInboxRecord,
+                () => loadFacultyInbox({ append: true })
+            );
+        } else if (!append) {
+            list.innerHTML = "";
+        }
         if (error.kind === "unauthorized") return;
         setStatus("inboxStatus", `Could not load requests: ${humanizeError(error)}`, "error");
     }
@@ -2604,18 +3075,28 @@ async function loadAdminUsers() {
 
     const flight = (async () => {
         try {
-            const [users, researchers] = await Promise.all([
-                api.listUsers(filters),
-                state.directory ? Promise.resolve(state.directory) : api.getResearchers().catch(() => [])
+            const [usersPayload, researchers] = await Promise.all([
+                api.listUsers({ ...filters, limit: ADMIN_LIST_LIMIT }),
+                state.directory
+                    ? Promise.resolve(state.directory)
+                    : api.getResearchers({ limit: DIRECTORY_LIMIT })
             ]);
             if (seq !== state.adminUsersSeq) return;
 
-            state.adminUsers = Array.isArray(users) ? users : [];
-            if (Array.isArray(researchers)) state.directory = researchers;
+            state.adminUsers = requireArray(
+                usersPayload,
+                "The API returned an unexpected accounts response."
+            );
+            state.directory = requireArray(
+                researchers,
+                "The API returned an unexpected directory response."
+            );
             renderAdminUsers();
+            const truncated = state.adminUsers.length >= ADMIN_LIST_LIMIT;
             setStatus(
                 "adminUsersStatus",
-                `${state.adminUsers.length} account${state.adminUsers.length === 1 ? "" : "s"} loaded.`,
+                `${state.adminUsers.length} account${state.adminUsers.length === 1 ? "" : "s"} loaded` +
+                `${truncated ? ` (showing the first ${ADMIN_LIST_LIMIT}; refine filters to see more)` : ""}.`,
                 "success"
             );
         } catch (error) {
@@ -2721,6 +3202,8 @@ async function adminResetPassword(userId) {
 }
 
 async function adminExportData(userId) {
+    if (state.adminExportsInFlight.has(userId)) return;
+    state.adminExportsInFlight.add(userId);
     const detail = $(`adminUserDetail-${userId}`);
     setStatus(`adminUserStatus-${userId}`, "Preparing export…");
     try {
@@ -2742,6 +3225,8 @@ async function adminExportData(userId) {
     } catch (error) {
         if (detail) detail.innerHTML = "";
         setStatus(`adminUserStatus-${userId}`, humanizeError(error), "error");
+    } finally {
+        state.adminExportsInFlight.delete(userId);
     }
 }
 
@@ -2962,7 +3447,7 @@ function renderAdminAudit() {
                 <p style="color:var(--text-sub);font-size:12px;margin:6px 0;">
                     Actor: ${escapeHTML(actor)} &middot; Target: ${escapeHTML(target)}
                 </p>
-                <pre style="background:#12141D;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;white-space:pre-wrap;margin:0;">${escapeHTML(event.detail || "")}</pre>
+                <pre style="background:#12141D;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;">${escapeHTML(event.detail || "")}</pre>
             </div>`;
     }).join("");
 }
@@ -2988,13 +3473,18 @@ async function loadAdminAudit() {
 
     const flight = (async () => {
         try {
-            const events = await api.listAuditEvents(filters);
+            const eventsPayload = await api.listAuditEvents({ ...filters, limit: ADMIN_LIST_LIMIT });
             if (seq !== state.adminAuditSeq) return;
-            state.adminAudit = Array.isArray(events) ? events : [];
+            state.adminAudit = requireArray(
+                eventsPayload,
+                "The API returned an unexpected audit events response."
+            );
             renderAdminAudit();
+            const truncated = state.adminAudit.length >= ADMIN_LIST_LIMIT;
             setStatus(
                 "adminAuditStatus",
-                `${state.adminAudit.length} event${state.adminAudit.length === 1 ? "" : "s"} loaded.`,
+                `${state.adminAudit.length} event${state.adminAudit.length === 1 ? "" : "s"} loaded` +
+                `${truncated ? ` (showing the first ${ADMIN_LIST_LIMIT}; refine filters to see more)` : ""}.`,
                 "success"
             );
         } catch (error) {
@@ -3043,6 +3533,7 @@ async function init() {
         const user = await api.me();
         await enterApp(user);
     } catch (error) {
+        ["loginBtn", "registerBtn"].forEach(id => setBusy(id, false));
         if (error.kind === "unauthorized") return;
         resetAppState();
         showAuth(`Could not restore your session: ${humanizeError(error)}`);

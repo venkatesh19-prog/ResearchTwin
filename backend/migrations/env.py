@@ -1,11 +1,11 @@
 """Alembic environment.
 
 The URL comes from ``-x``/``alembic.ini`` when set (used by tests), otherwise
-from ``DATABASE_URL``. ``app.database.resolve_database_url`` keeps the legacy
-Render ``postgres://`` scheme routed through psycopg 3.
+from ``DATABASE_URL``. ``app.db_url.resolve_migration_url`` keeps the legacy
+Render ``postgres://`` scheme routed through psycopg 3 and only reads a dotenv
+file when ``RESEARCHTWIN_ENV_FILE`` explicitly opts in.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -17,16 +17,18 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app import models  # noqa: E402,F401
-from app.database import Base, resolve_database_url  # noqa: E402
+from app.database import (  # noqa: E402
+    Base,
+    enforce_sqlite_foreign_keys,
+)
+from app.db_url import resolve_migration_url  # noqa: E402
 
 config = context.config
 target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    return resolve_database_url(
-        config.get_main_option("sqlalchemy.url") or os.getenv("DATABASE_URL")
-    )
+    return resolve_migration_url(config.get_main_option("sqlalchemy.url"))
 
 
 def run_migrations_offline() -> None:
@@ -49,6 +51,7 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    enforce_sqlite_foreign_keys(connectable)
 
     with connectable.connect() as connection:
         context.configure(
