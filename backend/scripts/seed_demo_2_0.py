@@ -556,14 +556,16 @@ try:
         from app.services.research_intelligence import rebuild_clusters
         # rebuild_clusters commits on its own; keep it inside this seed's single
         # transaction so a dry run (or a later failure) rolls it back too.
+        # actor=None: the rebuild is a system action, so its audit event and run
+        # must not be attributed to a person who did not perform it.
         real_commit = db.commit
         db.commit = db.flush
         try:
-            result = rebuild_clusters(db, actor=users[ADMIN], use_semantic=False)
+            result = rebuild_clusters(db, actor=None, use_semantic=False)
         finally:
             db.commit = real_commit
-        inserted[("research_cluster_run", name[ADMIN])] += 1
-        inserted[("research_cluster_assignment", name[ADMIN])] += sum(
+        inserted[("research_cluster_run", "system")] += 1
+        inserted[("research_cluster_assignment", "system")] += sum(
             len(c.get("researchers", c.get("members", []))) for c in result.get("clusters", [])) or 0
 
     db.flush()
