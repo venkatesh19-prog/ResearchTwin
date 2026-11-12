@@ -469,10 +469,12 @@ def add_group_member(
 
     expected_name = group_name_for_role(account.role)
     if expected_name != group.name:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Only {account.role} accounts can join the {group.name} group",
+        detail = (
+            "Administrator accounts are not assigned to role groups"
+            if expected_name is None
+            else f"{account.role.capitalize()} accounts can only join the {expected_name} group"
         )
+        raise HTTPException(status_code=400, detail=detail)
 
     membership = GroupMembership(
         group_id=group.id,

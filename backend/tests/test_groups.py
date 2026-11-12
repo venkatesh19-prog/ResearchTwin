@@ -170,6 +170,7 @@ def test_admin_can_list_groups_add_and_remove_members(client, admin_headers, db)
         headers=admin_headers,
     )
     assert added.status_code == 400
+    assert added.json()["detail"] == "Faculty accounts can only join the faculty group"
 
     removed = client.delete(
         f"{GROUPS}/{students.id}/members/{student['id']}",
@@ -215,6 +216,9 @@ def test_admin_can_list_groups_add_and_remove_members(client, admin_headers, db)
         headers=admin_headers,
     )
     assert admin_denied.status_code == 400
+    assert admin_denied.json()["detail"] == (
+        "Administrator accounts are not assigned to role groups"
+    )
 
 
 def test_membership_changes_are_audited(client, admin_headers, db):
