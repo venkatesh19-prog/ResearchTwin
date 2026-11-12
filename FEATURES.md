@@ -21,7 +21,7 @@ Each area lists what it does, who can use it, and where it lives. The **Status**
 | 15 | Inter-university collaborations | Lab owners at different institutions | Inter-university Collaborations | PASS |
 | 16 | Search history | Each account, private | Search History | PASS |
 
-Production sign-in with real accounts is the one acceptance step left to the project owner (see `TESTING.md`).
+Production sign-in with real student, faculty and admin accounts was completed by the project owner on 2026-11-12, and all three roles passed (see `TESTING.md`).
 
 ## Details
 

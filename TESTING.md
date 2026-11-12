@@ -66,9 +66,21 @@ These go beyond the committed suites. They used scripts kept outside the reposit
 | Health, CORS, CSP | **Production** (HTTPS) | `/health`, `/ready`, a foreign-origin CORS probe, response headers | Healthy; foreign origin refused; CSP has `frame-ancestors 'none'` |
 | Sidebar layout | Live HTML, laptop and mobile | Playwright on the exact deployed `researchtwin.html` | Menu scrolls, Insights reachable, Sign out visible and revoking |
 
-## Manual acceptance left to the project owner
+## Production acceptance (project owner)
 
-Production sign-in needs real account passwords, which were never used during testing. To finish acceptance, at https://starlit-empanada-a323e3.netlify.app/researchtwin.html:
+**Status: PASSED** (2026-11-12). The project owner signed in to the live application with real student, faculty and admin accounts and completed the checklist below. They reported that all three roles passed the live sign-in and workflow verification.
+
+| Role | Live sign-in | Workflow checklist | Result |
+|---|---|---|---|
+| Student | Passed | Passed | PASS |
+| Faculty | Passed | Passed | PASS |
+| Admin | Passed | Passed | PASS |
+
+Only the owner's overall pass for each role is recorded. Details of individual steps beyond the checklist were not reported and aren't claimed here.
+
+### Checklist used
+
+Production sign-in needs real account passwords, which were never used by automated testing. The owner ran this checklist at https://starlit-empanada-a323e3.netlify.app/researchtwin.html:
 
 1. **As a student** (Riya Kulkarni or Aditya Nambiar):
    - **ML Recommendations:** request recommendations.
