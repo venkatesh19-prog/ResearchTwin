@@ -2,7 +2,24 @@
 
 AI-powered researcher–student collaboration platform. Students save a research profile and receive ranked, explained researcher matches plus skill-gap roadmaps; faculty are linked to directory records by an administrator; both sides collaborate through requests, workspaces, teams, opportunities, theses, proposals, publications, and research-intelligence analytics.
 
-**This `README.md` is the single authoritative documentation file for the project.** Setup, architecture, data model, migrations, configuration, API reference, security, testing, deployment, disaster recovery, and troubleshooting all live here. There is no separate `docs/` tree and no API contract file to keep in sync — `git ls-files "*.md"` returns this file alone. Where an older phase report, audit note, or chat summary disagrees with this file or with the code, this file and the code are right and the other text is not a source of truth.
+**This `README.md` is the authoritative, code-referenced reference for the project.** Setup, architecture, data model, migrations, configuration, API reference, security, testing, deployment, disaster recovery, and troubleshooting all live here. Where an older phase report, audit note, or chat summary disagrees with this file or with the code, this file and the code are right and the other text is not a source of truth.
+
+## Handover documents
+
+The ResearchTwin 2.0 release adds focused documents that summarise this file and record what was verified in production on 2026-11-12:
+
+| Document | Contents |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Components, request flow, readiness gate, recommendation pipeline |
+| [FEATURES.md](FEATURES.md) | The 16 feature areas, roles, routes and acceptance status |
+| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | All 152 operations, generated from the code with the role each requires |
+| [DATABASE.md](DATABASE.md) | Production database, migrations, integrity rules, every table |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Render, Netlify and Neon configuration, release and demo-data procedures |
+| [TESTING.md](TESTING.md) | Test commands, verified results, the manual acceptance step |
+| [SECURITY.md](SECURITY.md) | Controls, known risks, the demo-seeding audit attribution exception |
+| [BACKUP_AND_RECOVERY.md](BACKUP_AND_RECOVERY.md) | Backups on record, restore and rollback procedures |
+| [USER_GUIDE.md](USER_GUIDE.md) | Student, faculty and admin instructions, demo accounts |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | ResearchTwin 2.0 release information and known limitations |
 
 ## Table of contents
 
@@ -870,7 +887,15 @@ These are open, evidence-backed risks — not completed work.
 3. **Shared rate limiting requires PostgreSQL** and is only proven globally once every instance shares the database. Local tests prove the logic, not the production topology.
 4. **Model artifact and label provenance.** The active bundle is a pickle-based joblib artifact — load only from a trusted, integrity-checked source, and note that readiness never digest-pins the `.joblib` itself (`services/recommendation.py:194-234`). Training labels are derived from the same profile features the model scores, so reported quality is partly circular; there is no held-out human-labeled evaluation. Neither Torch nor sentence-transformers is a dependency at all — embeddings run on ONNX Runtime specifically to fit the hosting memory ceiling (`constraints.txt:9-12`) — so the residual risk is the **un-pinned transitive graph** of the ONNX/tokenizers/shap stack, not a Torch footprint.
 5. **Roadmap retention gap.** Orphaned `roadmap_progress` rows after a researcher's skills are edited remain in the table and are never pruned.
-6. **Production behavior remains unverified.** Live dashboard settings, response headers, cold-start memory, and the deployed database revision were not inspected as part of documentation work. Nothing here should be read as "production is fixed/ready".
+6. **Production behavior is only partly verified.** On 2026-11-12 these were checked directly:
+   - the deployed versions;
+   - `/health`, `/ready` and response headers;
+   - CORS;
+   - Render and Netlify deploy settings;
+   - the Neon revision and data integrity;
+   - every role's API data through rolled-back in-process calls.
+
+   See `TESTING.md`. Cold-start memory headroom and client-IP attribution behind Render's proxy (item 2) were **not** measured.
 7. **Startup fail-fast vs degraded health.** Initialization runs at import, so an unreachable database stops the process before `/health` can answer. Choose deliberately in an approved change.
 8. **SQLite write contention.** These are **inherited defaults, not application settings**: `backend/app/database.py:14-16` passes only `check_same_thread` and the one PRAGMA issued per connection is `foreign_keys=ON` (`:19-22`), so nothing tunes journaling or locking. A file-backed SQLite database therefore runs with its default `journal_mode = delete`, and because no `timeout` connect argument is given, pysqlite's default 5-second busy timeout applies. A long import concurrent with traffic can still raise lock errors — surfaced as `503`, not silent loss.
 9. **DSAR export is incomplete (confirmed in code).** `GET /admin/users/{id}/data-export` reads only profiles, links, collaboration, roadmap, sessions, and audit events; the later-phase tables are absent. See [Personal-data export](#personal-data-export).
