@@ -52,8 +52,8 @@ from sqlalchemy import text  # noqa: E402
 
 from app.database import SessionLocal  # noqa: E402
 from app.models import (  # noqa: E402
-    CollaborationRequest, CollaborationWorkspace, FacultyResearcherLink, Group,
-    GroupMembership, Institution, InstitutionMembership, InterUniversityCollaboration,
+    CollaborationRequest, CollaborationWorkspace, FacultyResearcherLink,
+    Institution, InstitutionMembership, InterUniversityCollaboration,
     LiteratureEntry, Opportunity, OpportunityApplication, ProposalCitation,
     ProposalCollaborator, ProposalSection, PublicationRevision, PublicationStatusEvent,
     PublicationSubmission, ResearchClusterRun, ResearchLab, ResearchLabMember,
@@ -154,14 +154,9 @@ try:
             db.flush()
             inserted[("verification_request(pending)", name[uid])] += 1
 
-    # ------------------------------------------------------------------ groups
-    for gname, members in (("[DEMO] NLP Interest Group", (RIYA, PRIYA)),
-                           ("[DEMO] Medical Imaging Interest Group", (ADITYA, AISHA)),
-                           ("[DEMO] Research Mentors", (PRIYA, AISHA, ROHAN))):
-        g, _ = get_or_create(db, Group, "group", name[ADMIN], {"name": gname}, created_at=ago(10))
-        for uid in members:
-            get_or_create(db, GroupMembership, "group_membership", name[ADMIN],
-                          {"group_id": g.id, "user_id": uid}, created_at=ago(10))
+    # Groups are role cohorts ("students", "faculty") managed by registration and
+    # the admin console; the demo accounts already belong to theirs, so no extra
+    # groups are seeded.
 
     # ------------------------------------------------------------------ institutions and labs
     north, _ = get_or_create(db, Institution, "institution", name[ADMIN],
@@ -186,7 +181,7 @@ try:
          "Computer Vision, Deep Learning, Medical Imaging", "public", (ADITYA,)),
         (west, ROHAN, "[DEMO] Recommender Systems Group",
          "[DEMO DATA] Fictional group on fair, explainable recommender systems.",
-         "Recommender Systems, Machine Learning, Data Mining", "institution", ()),
+         "Recommender Systems, Machine Learning, Data Mining", "public", ()),
     ]
     labs = {}
     for inst, owner, lname, desc, areas, vis, members in lab_specs:
